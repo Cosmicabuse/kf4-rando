@@ -1,0 +1,585 @@
+// Analog Controls Patch by MrGrim, v2.0
+
+/////////////////////////////////////////////////////////////////////////
+// The widescreen and interlacing patches were not made by me. I included
+// them here as a bonus. They each have issues. Give them a try, see if
+// they work OK for you
+/////////////////////////////////////////////////////////////////////////
+[Widescreen]
+patch=1,EE,202218B4,extended,00000000
+patch=1,EE,2022193C,extended,00000000
+[No interlacing]
+patch=1,EE,0022d8e4,word,3c013f40
+patch=1,EE,0022d8e8,word,44810000
+patch=1,EE,0022d8f0,word,4600c602
+[Don't reset physical meter when switching weapons]
+// (Untested, might cause bugs)
+patch=1,EE,00101a74,word,00000000
+ /////////////////////////////////////////////////////////////////////////
+// Faster Turning
+//
+// If you want it, here it is. Pick one for speed and acceleration.
+//
+// BE WARNED: This will impact game balance. I find 1.5x speed, 3x accel,
+// and normal decel is a nice compromise and feels pretty good.
+/////////////////////////////////////////////////////////////////////////
+[1.5x turn speed]
+patch=1,EE,00413E28,word,3D1EDD1F
+patch=1,EE,00413E2c,word,3D1EDD1F
+patch=1,EE,00413E30,word,3CD3D17E
+patch=1,EE,00413E34,word,3C9EDD1F
+patch=1,EE,00413E38,word,3C9EDD1F
+[2x turn speed]
+patch=1,EE,00413E28,word,3D6E4BAE
+patch=1,EE,00413E2c,word,3D6E4BAE
+patch=1,EE,00413E30,word,3D1EDD1F
+patch=1,EE,00413E34,word,3CEE4BAE
+patch=1,EE,00413E38,word,3CEE4BAE
+[1.5x turn acceleration]
+patch=1,EE,00413E40,word,3B7E2E97
+patch=1,EE,00413E44,word,3B7E2E97
+patch=1,EE,00413E48,word,3B297465
+patch=1,EE,00413E4c,word,3AFE2E98
+patch=1,EE,00413E50,word,3AFE2E98
+[2x turn acceleration]
+patch=1,EE,00413E40,word,3BBEA2F1
+patch=1,EE,00413E44,word,3BBEA2F1
+patch=1,EE,00413E48,word,3B7E2E97
+patch=1,EE,00413E4c,word,3B3EA2F2
+patch=1,EE,00413E50,word,3B3EA2F2
+[3x turn acceleration]
+patch=1,EE,00413E40,word,3BFE2E97
+patch=1,EE,00413E44,word,3BFE2E97
+patch=1,EE,00413E48,word,3BA97465
+patch=1,EE,00413E4c,word,3B7E2E97
+patch=1,EE,00413E50,word,3B7E2E97
+[4x turn acceleration]
+patch=1,EE,00413E40,word,3C3EA2F1
+patch=1,EE,00413E44,word,3C3EA2F1
+patch=1,EE,00413E48,word,3BFE2E97
+patch=1,EE,00413E4c,word,3BBEA2F1
+patch=1,EE,00413E50,word,3BBEA2F1
+[2x turn deceleration]
+// This only impacts how quickly you come to a stop or slow down
+// It might help feel less sluggish if you're using 2x/4x above
+patch=1,EE,00413EA0,word,3BA97465
+patch=1,EE,00413EA4,word,3BA97465
+patch=1,EE,00413EA8,word,3BA97465
+patch=1,EE,00413EAC,word,3B2B92A6
+patch=1,EE,00413EB0,word,3BA97465
+[Alternative Ladder Handling]
+// - Only the action button can jump off a ladder
+// - Can look left and right as well as up and down while on a ladder
+//   (off by default)
+//
+// BE CAREFUL!! If you are looking away from the ladder while climbing
+// and reach the top, you will immediately start moving forward and
+// likely accidentally jump off. :D If this doesn't concern you, comment
+// out the marked section to enable looking left/right on a ladder.
+//
+// NOTE: YOU MUST COMMENT ALL 3 SECTIONS TO DISABLE ALTERNATIVE HANDLING.
+//       YOU MUST UNCOMMENT THE FIRST SECTION TO UNCOMMENT EITHER OF THE
+//       LAST TWO.
+//       YOU MUST UNCOMMENT ONE (AND ONLY ONE) OF THE LAST TWO.
+/////////////////////////////////////////////////////////////////////////
+patch=1,EE,001bd80c,word,3c010001
+patch=1,EE,001bd814,word,00611824
+patch=1,EE,001bd848,word,97829dd0
+patch=1,EE,001bd84c,word,00000000
+patch=1,EE,001bd850,word,00000000
+patch=1,EE,001bd854,word,00a21024
+patch=1,EE,001bd8d4,word,97859dbc
+patch=1,EE,001bd97c,word,3c010001
+patch=1,EE,001bd990,word,00611824
+patch=1,EE,001bd9cc,word,97829dd0
+patch=1,EE,001bd9d0,word,00000000
+patch=1,EE,001bd9d4,word,00000000
+patch=1,EE,001bd9d8,word,00a21024
+patch=1,EE,001bda14,word,1000000f
+patch=1,EE,001bdb64,word,3c010001
+patch=1,EE,001bdb78,word,00611824
+patch=1,EE,001bdbb4,word,97829dd0
+patch=1,EE,001bdbb8,word,00000000
+patch=1,EE,001bdbbc,word,00000000
+patch=1,EE,001bdbc0,word,00a21024
+patch=1,EE,001bdbfc,word,1000000f
+[Enable looking left/right while on a ladder]
+patch=1,EE,001b8260,word,3c020041
+patch=1,EE,001b8264,word,94433dc4
+patch=1,EE,001b8268,word,00000000
+patch=1,EE,001b826c,word,02439024
+patch=1,EE,001b575c,word,00000000
+patch=1,EE,001bd884,word,00000000
+patch=1,EE,001bd888,word,00000000
+patch=1,EE,001bd88c,word,00000000
+patch=1,EE,001bd890,word,97859dc0
+patch=1,EE,001bd894,word,00a01825
+patch=1,EE,001bd898,word,97859dc2
+patch=1,EE,001bd89c,word,00651825
+patch=1,EE,001bd8a0,word,97859dc8
+patch=1,EE,001bd8a4,word,00651825
+patch=1,EE,001bd8a8,word,97859dca
+patch=1,EE,001bd8ac,word,00651825
+patch=1,EE,001bd8b0,word,3c020041
+patch=1,EE,001bd8b4,word,a4433dc4
+patch=1,EE,001bd8b8,word,00000000
+patch=1,EE,001bd8bc,word,00000000
+patch=1,EE,001bd8c0,word,00000000
+patch=1,EE,001bd8c4,word,00000000
+patch=1,EE,001bd8c8,word,00000000
+patch=1,EE,001bd8cc,word,00000000
+patch=1,EE,001bd8d0,word,00000000
+[Disable looking left/right while on a ladder]
+patch=1,EE,001bd884,word,00000000
+patch=1,EE,001bd888,word,00000000
+patch=1,EE,001bd88c,word,00000000
+patch=1,EE,001bd890,word,00000000
+patch=1,EE,001bd894,word,00000000
+patch=1,EE,001bd898,word,00000000
+patch=1,EE,001bd89c,word,00000000
+patch=1,EE,001bd8a0,word,00000000
+patch=1,EE,001bd8a4,word,00000000
+patch=1,EE,001bd8a8,word,00000000
+patch=1,EE,001bd8ac,word,00000000
+patch=1,EE,001bd8b0,word,00000000
+patch=1,EE,001bd8b4,word,00000000
+patch=1,EE,001bd8b8,word,00000000
+patch=1,EE,001bd8bc,word,00000000
+patch=1,EE,001bd8c0,word,00000000
+patch=1,EE,001bd8c4,word,00000000
+patch=1,EE,001bd8c8,word,00000000
+patch=1,EE,001bd8cc,word,00000000
+patch=1,EE,001bd8d0,word,00000000
+/////////////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////
+// Full Analog Controls
+//
+// There are couple of options available. Make sure to uncomment one
+// section for each or the patch will break!
+//
+// Option 1: Inverted Y
+//
+// This controls whether or not pressing down on the right joypad looks
+// up or down. When inverted, it looks up similar to a flight control
+// stick.
+//
+// When "normal" it looks down. Some people find this more natural.
+//
+// Option 2: Clamping
+//
+// This option is a work around for gamepads that use a circular stop
+// vs ones with a square stop at the base.
+//
+// When the edge is circular, you cannot move the joypad 100% to a
+// corner. Instead it only registers as 70% in one direction and 70% in
+// the other. This means you cannot, for example, move forward and strafe
+// at the same time at the top speed.
+//
+// When the edge is square, you do not have this limit to movement.
+//
+// Clamping makes it so the game considers pushing the stick 70% or more
+// in any direction as full speed.
+//
+// TL;DR - Use clamping if your joypad has a circular stop at the base.
+/////////////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////
+// Uncomment only one of the following two sections for Y axis
+/////////////////////////////////////////////////////////////////////////
+[Inverted Y]
+patch=1,EE,001b5634,word,a0d10005
+patch=1,EE,001b5640,word,a0c00005
+patch=1,EE,001b56a8,word,97839dc8
+patch=1,EE,001b56b8,word,97839dca
+patch=1,EE,001b8414,word,00000000
+/////////////////////////////////////////////////////////////////////////
+["Normal" Y]
+patch=1,EE,001b5634,word,a0c00005
+patch=1,EE,001b5640,word,a0d10005
+patch=1,EE,001b56a8,word,97839dca
+patch=1,EE,001b56b8,word,97839dc8
+patch=1,EE,001b8414,word,46000007
+/////////////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////
+// Uncomment only one of the following two sections for clamping
+/////////////////////////////////////////////////////////////////////////
+[Clamping ON]
+patch=1,EE,001b83d4,word,2841005a
+patch=1,EE,001b83d8,word,50200004
+patch=1,EE,001b83dc,word,20020059
+patch=1,EE,001b83e0,word,2841ffa7
+patch=1,EE,001b83e4,word,54200001
+patch=1,EE,001b83e8,word,2002ffa7
+patch=1,EE,001b84d0,word,2841005a
+patch=1,EE,001b84d4,word,50200004
+patch=1,EE,001b84d8,word,20020059
+patch=1,EE,001b84dc,word,2841ffa7
+patch=1,EE,001b84e0,word,54200001
+patch=1,EE,001b84e4,word,2002ffa7
+patch=1,EE,001b85c8,word,2841005a
+patch=1,EE,001b85cc,word,50200004
+patch=1,EE,001b85d0,word,20020059
+patch=1,EE,001b85d4,word,2841ffa7
+patch=1,EE,001b85d8,word,54200001
+patch=1,EE,001b85dc,word,2002ffa7
+patch=1,EE,001b86c4,word,2841005a
+patch=1,EE,001b86c8,word,50200004
+patch=1,EE,001b86cc,word,20020059
+patch=1,EE,001b86d0,word,2841ffa7
+patch=1,EE,001b86d4,word,54200001
+patch=1,EE,001b86d8,word,2002ffa7
+/////////////////////////////////////////////////////////////////////////
+[Clamping OFF]
+patch=1,EE,001b83d4,word,2401007f
+patch=1,EE,001b83d8,word,50410001
+patch=1,EE,001b83dc,word,2042ffff
+patch=1,EE,001b83e0,word,00000000
+patch=1,EE,001b83e4,word,00000000
+patch=1,EE,001b83e8,word,00000000
+patch=1,EE,001b84d0,word,2401007f
+patch=1,EE,001b84d4,word,50410001
+patch=1,EE,001b84d8,word,2042ffff
+patch=1,EE,001b84dc,word,00000000
+patch=1,EE,001b84e0,word,00000000
+patch=1,EE,001b84e4,word,00000000
+patch=1,EE,001b85c8,word,2401007f
+patch=1,EE,001b85cc,word,50410001
+patch=1,EE,001b85d0,word,2042ffff
+patch=1,EE,001b85d4,word,00000000
+patch=1,EE,001b85d8,word,00000000
+patch=1,EE,001b85dc,word,00000000
+patch=1,EE,001b86c4,word,2401007f
+patch=1,EE,001b86c8,word,50410001
+patch=1,EE,001b86cc,word,2042ffff
+patch=1,EE,001b86d0,word,00000000
+patch=1,EE,001b86d4,word,00000000
+patch=1,EE,001b86d8,word,00000000
+/////////////////////////////////////////////////////////////////////////
+
+[Full analog controls part 1]
+patch=1,EE,001b55ec,word,14e40053
+patch=1,EE,001b55f4,word,96020008
+patch=1,EE,001b55f8,word,a6000008
+patch=1,EE,001b55fc,word,a602000a
+patch=1,EE,001b5600,word,241100ff
+patch=1,EE,001b5604,word,96020000
+patch=1,EE,001b5608,word,00021c00
+patch=1,EE,001b560c,word,9f989dc0
+patch=1,EE,001b5610,word,0302c824
+patch=1,EE,001b5614,word,57200004
+patch=1,EE,001b5618,word,a0d10004
+patch=1,EE,001b561c,word,0303c824
+patch=1,EE,001b5620,word,57200001
+patch=1,EE,001b5624,word,a0c00004
+patch=1,EE,001b5628,word,9f989dc8
+patch=1,EE,001b562c,word,0302c824
+patch=1,EE,001b5630,word,57200004
+patch=1,EE,001b5638,word,0303c824
+patch=1,EE,001b563c,word,57200001
+patch=1,EE,001b5640,word,a0c00005
+patch=1,EE,001b5644,word,9f989dc4
+patch=1,EE,001b5648,word,0302c824
+patch=1,EE,001b564c,word,57200004
+patch=1,EE,001b5650,word,a0d10006
+patch=1,EE,001b5654,word,0303c824
+patch=1,EE,001b5658,word,57200001
+patch=1,EE,001b565c,word,a0c00006
+patch=1,EE,001b5660,word,9f989dbc
+patch=1,EE,001b5664,word,0302c824
+patch=1,EE,001b5668,word,57200004
+patch=1,EE,001b566c,word,a0c00007
+patch=1,EE,001b5670,word,0303c824
+patch=1,EE,001b5674,word,57200001
+patch=1,EE,001b5678,word,a0d10007
+patch=1,EE,001b567c,word,00008821
+patch=1,EE,001b5680,word,90c20004
+patch=1,EE,001b5684,word,97839dc2
+patch=1,EE,001b5688,word,2c41007f
+patch=1,EE,001b568c,word,54200005
+patch=1,EE,001b5690,word,02238825
+patch=1,EE,001b5694,word,97839dc0
+patch=1,EE,001b5698,word,2042ff81
+patch=1,EE,001b569c,word,54400001
+patch=1,EE,001b56a0,word,02238825
+patch=1,EE,001b56a4,word,90c20005
+patch=1,EE,001b56ac,word,2c41007f
+patch=1,EE,001b56b0,word,54200005
+patch=1,EE,001b56b4,word,02238825
+patch=1,EE,001b56bc,word,2042ff81
+patch=1,EE,001b56c0,word,54400001
+patch=1,EE,001b56c4,word,02238825
+patch=1,EE,001b56c8,word,90c20006
+patch=1,EE,001b56cc,word,97839dc6
+patch=1,EE,001b56d0,word,2c41007f
+patch=1,EE,001b56d4,word,54200005
+patch=1,EE,001b56d8,word,02238825
+patch=1,EE,001b56dc,word,97839dc4
+patch=1,EE,001b56e0,word,2042ff81
+patch=1,EE,001b56e4,word,54400001
+patch=1,EE,001b56e8,word,02238825
+patch=1,EE,001b56ec,word,90c20007
+patch=1,EE,001b56f0,word,97839dbc
+patch=1,EE,001b56f4,word,2c41007f
+patch=1,EE,001b56f8,word,54200005
+patch=1,EE,001b56fc,word,02238825
+patch=1,EE,001b5700,word,97839dbe
+patch=1,EE,001b5704,word,2042ff81
+patch=1,EE,001b5708,word,54400001
+patch=1,EE,001b570c,word,02238825
+patch=1,EE,001b5710,word,9602000a
+patch=1,EE,001b5714,word,96030000
+patch=1,EE,001b5718,word,a6110008
+patch=1,EE,001b571c,word,00021027
+patch=1,EE,001b5720,word,96040002
+patch=1,EE,001b5724,word,02221024
+patch=1,EE,001b5728,word,00711825
+patch=1,EE,001b572c,word,00822025
+patch=1,EE,001b5730,word,a6030000
+patch=1,EE,001b5734,word,1000000a
+patch=1,EE,001b5738,word,a6040002
+patch=1,EE,001b573c,word,a6000008
+patch=1,EE,001b5740,word,10000007
+patch=1,EE,001b5744,word,a600000a
+
+[Full analog controls part 2]
+patch=1,EE,001b8388,word,3c010041
+patch=1,EE,001b83a8,word,3c010041
+patch=1,EE,001b83ac,word,24213db8
+patch=1,EE,001b83b0,word,8c220004
+patch=1,EE,001b83b4,word,240100ff
+patch=1,EE,001b83b8,word,104100fe
+patch=1,EE,001b83bc,word,3c013c38
+patch=1,EE,001b83c0,word,24211703
+patch=1,EE,001b83c4,word,44812000
+patch=1,EE,001b83c8,word,3c0301e1
+patch=1,EE,001b83cc,word,9062dc05
+patch=1,EE,001b83d0,word,2042ff81
+patch=1,EE,001b83ec,word,97839dca
+patch=1,EE,001b83f0,word,97819dc8
+patch=1,EE,001b83f4,word,00611825
+patch=1,EE,001b83f8,word,00721824
+patch=1,EE,001b83fc,word,50600001
+patch=1,EE,001b8400,word,20020000
+patch=1,EE,001b8404,word,00401820
+patch=1,EE,001b8408,word,44820000
+patch=1,EE,001b840c,word,46800020
+patch=1,EE,001b8410,word,46040002
+patch=1,EE,001b8418,word,46150002
+patch=1,EE,001b841c,word,26e23f80
+patch=1,EE,001b8420,word,c44101b8
+patch=1,EE,001b8424,word,46000085
+patch=1,EE,001b8428,word,46001032
+patch=1,EE,001b842c,word,00000000
+patch=1,EE,001b8430,word,45010010
+patch=1,EE,001b8434,word,46000885
+patch=1,EE,001b8438,word,46011032
+patch=1,EE,001b843c,word,00000000
+patch=1,EE,001b8440,word,45030006
+patch=1,EE,001b8444,word,461d0841
+patch=1,EE,001b8448,word,46010034
+patch=1,EE,001b844c,word,4600e8c7
+patch=1,EE,001b8450,word,45020005
+patch=1,EE,001b8454,word,461a0840
+patch=1,EE,001b8458,word,46030840
+patch=1,EE,001b845c,word,46000834
+patch=1,EE,001b8460,word,10000016
+patch=1,EE,001b8464,word,e44101b8
+patch=1,EE,001b8468,word,46020034
+patch=1,EE,001b846c,word,10000013
+patch=1,EE,001b8470,word,e44101b8
+patch=1,EE,001b8474,word,10600002
+patch=1,EE,001b8478,word,4600d0c6
+patch=1,EE,001b847c,word,4600e8c6
+patch=1,EE,001b8480,word,46011032
+patch=1,EE,001b8484,word,00000000
+patch=1,EE,001b8488,word,45020006
+patch=1,EE,001b848c,word,46030840
+patch=1,EE,001b8490,word,46000834
+patch=1,EE,001b8494,word,4600e8c6
+patch=1,EE,001b8498,word,45020005
+patch=1,EE,001b849c,word,461a0841
+patch=1,EE,001b84a0,word,46030840
+patch=1,EE,001b84a4,word,46010034
+patch=1,EE,001b84a8,word,10000004
+patch=1,EE,001b84ac,word,e44101b8
+patch=1,EE,001b84b0,word,46000834
+patch=1,EE,001b84b4,word,10000001
+patch=1,EE,001b84b8,word,e44101b8
+patch=1,EE,001b84bc,word,45030001
+patch=1,EE,001b84c0,word,e44001b8
+patch=1,EE,001b84c4,word,3c0301e1
+patch=1,EE,001b84c8,word,9062dc04
+patch=1,EE,001b84cc,word,2042ff81
+patch=1,EE,001b84e8,word,97839dc2
+patch=1,EE,001b84ec,word,97819dc0
+patch=1,EE,001b84f0,word,00611825
+patch=1,EE,001b84f4,word,00721824
+patch=1,EE,001b84f8,word,50600001
+patch=1,EE,001b84fc,word,00001020
+patch=1,EE,001b8500,word,00401820
+patch=1,EE,001b8504,word,44820000
+patch=1,EE,001b8508,word,46800020
+patch=1,EE,001b850c,word,46040002
+patch=1,EE,001b8510,word,46160002
+patch=1,EE,001b8514,word,26e23f80
+patch=1,EE,001b8518,word,c44101bc
+patch=1,EE,001b851c,word,46000085
+patch=1,EE,001b8520,word,46001032
+patch=1,EE,001b8524,word,00000000
+patch=1,EE,001b8528,word,45010010
+patch=1,EE,001b852c,word,46000885
+patch=1,EE,001b8530,word,46011032
+patch=1,EE,001b8534,word,00000000
+patch=1,EE,001b8538,word,45030006
+patch=1,EE,001b853c,word,461d0841
+patch=1,EE,001b8540,word,46010034
+patch=1,EE,001b8544,word,4600e8c7
+patch=1,EE,001b8548,word,45020005
+patch=1,EE,001b854c,word,461a0840
+patch=1,EE,001b8550,word,46030840
+patch=1,EE,001b8554,word,46000834
+patch=1,EE,001b8558,word,10000016
+patch=1,EE,001b855c,word,e44101bc
+patch=1,EE,001b8560,word,46020034
+patch=1,EE,001b8564,word,10000013
+patch=1,EE,001b8568,word,e44101bc
+patch=1,EE,001b856c,word,10600002
+patch=1,EE,001b8570,word,4600d0c6
+patch=1,EE,001b8574,word,4600e8c6
+patch=1,EE,001b8578,word,46011032
+patch=1,EE,001b857c,word,00000000
+patch=1,EE,001b8580,word,45020006
+patch=1,EE,001b8584,word,46030840
+patch=1,EE,001b8588,word,46000834
+patch=1,EE,001b858c,word,4600e8c6
+patch=1,EE,001b8590,word,45020005
+patch=1,EE,001b8594,word,461a0841
+patch=1,EE,001b8598,word,46030840
+patch=1,EE,001b859c,word,46010034
+patch=1,EE,001b85a0,word,10000004
+patch=1,EE,001b85a4,word,e44101bc
+patch=1,EE,001b85a8,word,46000834
+patch=1,EE,001b85ac,word,10000001
+patch=1,EE,001b85b0,word,e44101bc
+patch=1,EE,001b85b4,word,45030001
+patch=1,EE,001b85b8,word,e44001bc
+patch=1,EE,001b85bc,word,3c0301e1
+patch=1,EE,001b85c0,word,9062dc07
+patch=1,EE,001b85c4,word,2042ff81
+patch=1,EE,001b85e0,word,97839dbc
+patch=1,EE,001b85e4,word,97819dbe
+patch=1,EE,001b85e8,word,00611825
+patch=1,EE,001b85ec,word,00721824
+patch=1,EE,001b85f0,word,50600001
+patch=1,EE,001b85f4,word,00001020
+patch=1,EE,001b85f8,word,00401820
+patch=1,EE,001b85fc,word,44820000
+patch=1,EE,001b8600,word,46800020
+patch=1,EE,001b8604,word,46040002
+patch=1,EE,001b8608,word,46000007
+patch=1,EE,001b860c,word,46140002
+patch=1,EE,001b8610,word,26e23f80
+patch=1,EE,001b8614,word,c44101b4
+patch=1,EE,001b8618,word,46000085
+patch=1,EE,001b861c,word,46001032
+patch=1,EE,001b8620,word,00000000
+patch=1,EE,001b8624,word,45010010
+patch=1,EE,001b8628,word,46000885
+patch=1,EE,001b862c,word,46011032
+patch=1,EE,001b8630,word,00000000
+patch=1,EE,001b8634,word,45030006
+patch=1,EE,001b8638,word,461b0841
+patch=1,EE,001b863c,word,46010034
+patch=1,EE,001b8640,word,4600d8c7
+patch=1,EE,001b8644,word,45020005
+patch=1,EE,001b8648,word,46190840
+patch=1,EE,001b864c,word,46030840
+patch=1,EE,001b8650,word,46000834
+patch=1,EE,001b8654,word,10000016
+patch=1,EE,001b8658,word,e44101b4
+patch=1,EE,001b865c,word,46020034
+patch=1,EE,001b8660,word,10000013
+patch=1,EE,001b8664,word,e44101b4
+patch=1,EE,001b8668,word,10600002
+patch=1,EE,001b866c,word,4600c8c6
+patch=1,EE,001b8670,word,4600d8c6
+patch=1,EE,001b8674,word,46011032
+patch=1,EE,001b8678,word,00000000
+patch=1,EE,001b867c,word,45020006
+patch=1,EE,001b8680,word,46030840
+patch=1,EE,001b8684,word,46000834
+patch=1,EE,001b8688,word,4600d8c6
+patch=1,EE,001b868c,word,45020005
+patch=1,EE,001b8690,word,46190841
+patch=1,EE,001b8694,word,46030840
+patch=1,EE,001b8698,word,46010034
+patch=1,EE,001b869c,word,10000004
+patch=1,EE,001b86a0,word,e44101b4
+patch=1,EE,001b86a4,word,46000834
+patch=1,EE,001b86a8,word,10000001
+patch=1,EE,001b86ac,word,e44101b4
+patch=1,EE,001b86b0,word,45030001
+patch=1,EE,001b86b4,word,e44001b4
+patch=1,EE,001b86b8,word,3c0301e1
+patch=1,EE,001b86bc,word,9062dc06
+patch=1,EE,001b86c0,word,2042ff81
+patch=1,EE,001b86dc,word,97839dc6
+patch=1,EE,001b86e0,word,97819dc4
+patch=1,EE,001b86e4,word,00611825
+patch=1,EE,001b86e8,word,00721824
+patch=1,EE,001b86ec,word,50600001
+patch=1,EE,001b86f0,word,00001020
+patch=1,EE,001b86f4,word,00401820
+patch=1,EE,001b86f8,word,44820000
+patch=1,EE,001b86fc,word,46800020
+patch=1,EE,001b8700,word,46040002
+patch=1,EE,001b8704,word,46140002
+patch=1,EE,001b8708,word,26e23f80
+patch=1,EE,001b870c,word,c44101b0
+patch=1,EE,001b8710,word,46000085
+patch=1,EE,001b8714,word,46001032
+patch=1,EE,001b8718,word,00000000
+patch=1,EE,001b871c,word,45010010
+patch=1,EE,001b8720,word,46000885
+patch=1,EE,001b8724,word,46011032
+patch=1,EE,001b8728,word,00000000
+patch=1,EE,001b872c,word,45030006
+patch=1,EE,001b8730,word,461b0841
+patch=1,EE,001b8734,word,46010034
+patch=1,EE,001b8738,word,4600d8c7
+patch=1,EE,001b873c,word,45020005
+patch=1,EE,001b8740,word,46190840
+patch=1,EE,001b8744,word,46030840
+patch=1,EE,001b8748,word,46000834
+patch=1,EE,001b874c,word,10000016
+patch=1,EE,001b8750,word,e44101b0
+patch=1,EE,001b8754,word,46020034
+patch=1,EE,001b8758,word,10000013
+patch=1,EE,001b875c,word,e44101b0
+patch=1,EE,001b8760,word,10600002
+patch=1,EE,001b8764,word,4600c8c6
+patch=1,EE,001b8768,word,4600d8c6
+patch=1,EE,001b876c,word,46011032
+patch=1,EE,001b8770,word,00000000
+patch=1,EE,001b8774,word,45020006
+patch=1,EE,001b8778,word,46030840
+patch=1,EE,001b877c,word,46000834
+patch=1,EE,001b8780,word,4600d8c6
+patch=1,EE,001b8784,word,45020005
+patch=1,EE,001b8788,word,46190841
+patch=1,EE,001b878c,word,46030840
+patch=1,EE,001b8790,word,46010034
+patch=1,EE,001b8794,word,10000004
+patch=1,EE,001b8798,word,e44101b0
+patch=1,EE,001b879c,word,46000834
+patch=1,EE,001b87a0,word,10000001
+patch=1,EE,001b87a4,word,e44101b0
+patch=1,EE,001b87a8,word,45030001
+patch=1,EE,001b87ac,word,e44001b0
+patch=1,EE,001b87b0,word,00000000
+
+[Minor movement bug fix - ignore this, not needed with analog control patch]
+//patch=1,EE,001b856c,word,c44001b8
+//patch=1,EE,001b8574,word,46020034

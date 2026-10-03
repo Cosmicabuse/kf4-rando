@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>KF4 Randomizer</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f5f7;
+    --fg: #1a1a1a;
+    --panel: #ffffff;
+    --border: #d6d6db;
+    --accent: #6a4fd6;
+    --accent-fg: #ffffff;
+    --muted: #6b6b76;
+    --log-bg: #14141a;
+    --log-fg: #d7f4d7;
+    --ok: #1a8a3d;
+    --bad: #c13c3c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16161c;
+      --fg: #e8e8ec;
+      --panel: #202028;
+      --border: #34343e;
+      --accent: #8a72f0;
+      --accent-fg: #16161c;
+      --muted: #9a9aa6;
+      --log-bg: #0b0b0f;
+      --log-fg: #b7f5c0;
+      --ok: #4ade80;
+      --bad: #f87171;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    margin: 0;
+    padding: 24px;
+    max-width: 900px;
+    margin-inline: auto;
+  }
+  h1 { font-size: 1.4rem; margin-bottom: 4px; }
+  p.sub { color: var(--muted); margin-top: 0; }
+  fieldset {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+  }
+  legend { font-weight: 600; padding: 0 8px; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 0.85rem; margin-bottom: 4px; color: var(--muted); }
+  .field input[type=text], .field input[type=number], .field select, .field textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--fg);
+    font-size: 0.95rem;
+    font-family: inherit;
+  }
+  .field textarea { font-family: ui-monospace, Consolas, monospace; min-height: 90px; resize: vertical; }
+  .filerow { display: flex; gap: 8px; align-items: stretch; }
+  .filerow input[type=text] { flex: 1; }
+  .filerow button { flex-shrink: 0; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .row .field { flex: 1; min-width: 220px; }
+  .checkgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px 16px; }
+  .checkgrid label { display: flex; align-items: center; gap: 8px; font-size: 0.92rem; cursor: pointer; }
+  .modgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px 16px; }
+  .hint { color: var(--muted); font-weight: 400; font-size: 0.85em; }
+  .spellgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
+  .spellcol-title { font-weight: 600; font-size: 0.85rem; margin-bottom: 8px; color: var(--accent); }
+  .spellfield input { padding: 6px 8px; }
+  .spellfield label { font-size: 0.78rem; }
+  .invrow { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .invrow select { flex: 3; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--fg); }
+  .invrow input { flex: 1; min-width: 70px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--fg); }
+  .invrow button { padding: 6px 12px; }
+  .actions { display: flex; gap: 10px; margin: 20px 0; }
+  button {
+    font-size: 0.95rem;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+  }
+  button.primary { background: var(--accent); color: var(--accent-fg); font-weight: 600; }
+  button.secondary { background: transparent; color: var(--fg); border: 1px solid var(--border); }
+  button:disabled { opacity: 0.6; cursor: default; }
+  #log {
+    background: var(--log-bg);
+    color: var(--log-fg);
+    border-radius: 10px;
+    padding: 14px 16px;
+    min-height: 200px;
+    max-height: 480px;
+    overflow: auto;
+    white-space: pre-wrap;
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 0.85rem;
+  }
+  details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+
+<h1>King's Field IV Randomizer</h1>
+<p class="sub">Same options as config.yaml.</p>
+
+<form id="cfgForm">
+
+  <fieldset>
+    <legend>Files</legend>
+    <div class="field">
+      <label for="input">Input ISO (original "King's Field - The Ancient City (USA).iso")</label>
+      <div class="filerow">
+        <input type="text" id="input" name="input" placeholder="C:\path\to\King's Field - The Ancient City (USA).iso">
+        <button type="button" class="secondary" id="browseInputBtn">Browse&hellip;</button>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label for="output">Output ISO (overwritten if it already exists). Leave blank to auto-name it "KF4_&lt;seed&gt;.iso" next to the input ISO.</label>
+        <div class="filerow">
+          <input type="text" id="output" name="output" placeholder="(auto: KF4_<seed>.iso next to the input ISO)">
+          <button type="button" class="secondary" id="browseOutputBtn">Browse&hellip;</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="spoiler">Spoiler log path (optional, defaults to spoiler_&lt;seed&gt;.log next to the output)</label>
+        <input type="text" id="spoiler" name="spoiler" placeholder="">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label for="seed">Seed (optional, blank for a random one)</label>
+        <input type="text" id="seed" name="seed" placeholder="12345">
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset id="normalModeFields">
+    <legend>Quality of life</legend>
+    <div class="checkgrid">
+      <label><input type="checkbox" name="strip_dummy_files" value="1" checked> Lower output ISO size</label>
+      <label><input type="checkbox" name="remove_empty_containers" value="1"> Remove empty containers</label>
+      <label><input type="checkbox" name="pickup_popup_show_item_index" value="1"> Show item slot index in pickup text (debug)</label>
+      <label title="Toggle HUD: your position, the map ID, the last item taken, and every item still in the map with its coordinates.&#10;Warp: jump to any of the 64 maps.&#10;Levitate: stops you falling.&#10;&#10;Up/Down move, X confirms, Square cancels."><input type="checkbox" name="full_debug_mode" value="1"> Debug menu (L3+R3 to toggle)</label>
+    </div>
+    <div class="modgrid">
+      {{range .Categories}}
+      <div class="field">
+        <label title="{{.Description}}">{{.Description}}</label>
+        <select name="mod_{{.ID}}">
+          <option value="">(none)</option>
+          {{range .Modes}}
+          <option value="{{.ID}}" title="{{.Notes}}">{{.Label}}</option>
+          {{end}}
+        </select>
+      </div>
+      {{end}}
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Randomizer</legend>
+    <div class="checkgrid">
+      <label><input type="radio" name="randomizer" value="on" checked onchange="toggleRandomizer()"> Enabled</label>
+      <label><input type="radio" name="randomizer" value="off" onchange="toggleRandomizer()"> Disabled</label>
+    </div>
+    <div id="randomizerFields">
+      <div class="field">
+        <label for="logic">Logic</label>
+        <select id="logic" name="logic">
+          <option value="glitchless" selected>Glitchless</option>
+          <option value="none">No logic</option>
+        </select>
+      </div>
+      <div class="checkgrid">
+        <label><input type="checkbox" id="randomize_container_items" name="randomize_container_items" value="1"> Randomize containers</label>
+        <label><input type="checkbox" id="randomize_monster_drops" name="randomize_monster_drops" value="1" checked> Randomize monster drops</label>
+        <label><input type="checkbox" id="randomize_shops" name="randomize_shops" value="1"> Randomize shops</label>
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Cheats</legend>
+    <div class="checkgrid">
+      <label><input type="checkbox" id="enable_cheats" name="enable_cheats" value="1" onchange="toggleCheats()"> Enable cheats</label>
+    </div>
+  </fieldset>
+
+  <div id="cheatFields" style="display:none;">
+  <fieldset>
+    <legend>Character stats <span class="hint">(blank = vanilla default)</span></legend>
+    <div class="modgrid">
+      {{range .CoreStats}}
+      <div class="field">
+        <label for="{{.Key}}">{{.Label}} <span class="hint">(vanilla: {{.Default}})</span></label>
+        <input type="number" id="{{.Key}}" name="{{.Key}}" min="{{.Min}}" max="{{.Max}}" placeholder="{{.Default}}">
+      </div>
+      {{end}}
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Starting magic <span class="hint">(level 0-3 per spell, blank = vanilla)</span></legend>
+    <div class="spellgrid">
+      {{range .MagicSpells}}
+      <div class="spellcol">
+        <div class="spellcol-title">{{.Element}}</div>
+        {{range .Spells}}
+        <div class="field spellfield">
+          <label for="{{.Key}}">{{.Name}}</label>
+          <input type="number" id="{{.Key}}" name="{{.Key}}" min="0" max="3" placeholder="0">
+        </div>
+        {{end}}
+      </div>
+      {{end}}
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Starting equipment <span class="hint">(blank = vanilla, normally unequipped)</span></legend>
+    <div class="modgrid">
+      {{range .EquipSlots}}
+      <div class="field">
+        <label for="{{.Key}}">{{.Label}}</label>
+        <select id="{{.Key}}" name="{{.Key}}">
+          <option value="">(unequipped)</option>
+          {{range .Options}}
+          <option value="{{.ClassID}}">{{.Name}}</option>
+          {{end}}
+        </select>
+      </div>
+      {{end}}
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Starting inventory</legend>
+    <div id="invRows"></div>
+    <button type="button" class="secondary" id="addInvRow">+ Add item</button>
+    <template id="invRowTmpl">
+      <div class="invrow">
+        <select name="inv_item">
+          <option value="">(pick an item)</option>
+          {{range .ItemCatalog}}
+          <optgroup label="{{.Category}}">
+            {{range .Items}}
+            <option value="{{.ClassID}}">{{.Name}}</option>
+            {{end}}
+          </optgroup>
+          {{end}}
+        </select>
+        <input type="number" name="inv_qty" min="0" max="99" value="1" placeholder="qty">
+        <button type="button" class="secondary removeRow" title="Remove">&#10005;</button>
+      </div>
+    </template>
+  </fieldset>
+  </div>
+
+  <div class="actions">
+    <button type="submit" class="primary" id="runBtn">Run</button>
+    <button type="button" class="secondary" id="saveBtn">Save as config.yaml</button>
+    <button type="button" class="secondary" id="loadBtn">Load config.yaml&hellip;</button>
+    <input type="file" id="loadFile" accept=".yaml,.yml" style="display:none;">
+  </div>
+</form>
+
+<pre id="log">Output will appear here once you click Run.</pre>
+
+<script>
+function randomizerOn() {
+  const el = document.querySelector('input[name="randomizer"]:checked');
+  return !el || el.value === 'on';
+}
+
+function toggleRandomizer() {
+  const on = randomizerOn();
+  const wrap = document.getElementById('randomizerFields');
+  wrap.style.opacity = on ? '1' : '0.5';
+  wrap.querySelectorAll('input, select').forEach((el) => { el.disabled = !on; });
+}
+
+function toggleCheats() {
+  const on = document.getElementById('enable_cheats').checked;
+  document.getElementById('cheatFields').style.display = on ? 'block' : 'none';
+}
+
+function addInvRow() {
+  const tmpl = document.getElementById('invRowTmpl');
+  const row = tmpl.content.cloneNode(true);
+  row.querySelector('.removeRow').addEventListener('click', (e) => {
+    e.target.closest('.invrow').remove();
+  });
+  document.getElementById('invRows').appendChild(row);
+}
+document.getElementById('addInvRow').addEventListener('click', addInvRow);
+addInvRow(); // start with one empty row so the section isn't blank
+
+const form = document.getElementById('cfgForm');
+const logEl = document.getElementById('log');
+const runBtn = document.getElementById('runBtn');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  logEl.textContent = '';
+  runBtn.disabled = true;
+  runBtn.textContent = 'Running...';
+  try {
+    const params = new URLSearchParams(new FormData(form));
+    const resp = await fetch('/run', { method: 'POST', body: params });
+    if (!resp.ok) {
+      logEl.textContent = await resp.text();
+      return;
+    }
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      logEl.textContent += decoder.decode(value, { stream: true });
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+  } catch (err) {
+    logEl.textContent += '\n\nJS error: ' + err;
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = 'Run';
+  }
+});
+
+document.getElementById('saveBtn').addEventListener('click', async () => {
+  const params = new URLSearchParams(new FormData(form));
+  const resp = await fetch('/config.yaml', { method: 'POST', body: params });
+  if (!resp.ok) {
+    alert(await resp.text());
+    return;
+  }
+  const blob = await resp.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'config.yaml';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+// cfg.seed is a string, JSON.parse would round a 64-bit seed.
+function applyConfigToForm(cfg) {
+  const simpleFields = ['input', 'output', 'spoiler', 'seed',
+    'strip_dummy_files', 'remove_empty_containers', 'randomize_container_items',
+    'randomize_shops', 'pickup_popup_show_item_index', 'full_debug_mode'];
+  for (const name of simpleFields) {
+    const el = form.elements[name];
+    if (!el) continue;
+    const val = cfg[name];
+    if (el.type === 'checkbox') {
+      el.checked = !!val;
+    } else {
+      el.value = (val === null || val === undefined) ? '' : val;
+    }
+  }
+
+  const on = !cfg.disable_randomizer;
+  form.querySelector('input[name="randomizer"][value="' + (on ? 'on' : 'off') + '"]').checked = true;
+  // logic_fill is a *bool: absent means glitchless, same as the engine.
+  document.getElementById('logic').value = (cfg.logic_fill === false) ? 'none' : 'glitchless';
+  document.getElementById('randomize_monster_drops').checked = cfg.randomize_monster_drops !== false;
+
+  // Any ini override in the file means the cheats were in use.
+  const cheats = ['hp', 'mp', 'power', 'magic', 'level', 'exp', 'gold'];
+  document.getElementById('enable_cheats').checked =
+    cheats.some((k) => cfg[k] !== null && cfg[k] !== undefined) ||
+    !!(cfg.starting_config && Object.keys(cfg.starting_config).length);
+
+  toggleRandomizer();
+  toggleCheats();
+
+  // looks through every mod_* select, mode IDs must stay unique
+  form.querySelectorAll('select[name^="mod_"]').forEach((sel) => { sel.value = ''; });
+  (cfg.mods || []).forEach((entry) => {
+    for (const [modeID, enabled] of Object.entries(entry)) {
+      if (!enabled) continue;
+      form.querySelectorAll('select[name^="mod_"]').forEach((sel) => {
+        if (sel.querySelector('option[value="' + modeID + '"]')) {
+          sel.value = modeID;
+        }
+      });
+    }
+  });
+
+  document.getElementById('invRows').innerHTML = '';
+  const itemRe = /^item_(\d{3})$/;
+  const startingConfig = cfg.starting_config || {};
+  for (const [key, val] of Object.entries(startingConfig)) {
+    const m = key.match(itemRe);
+    if (m) {
+      addInvRow();
+      const rows = document.querySelectorAll('#invRows .invrow');
+      const row = rows[rows.length - 1];
+      // item_NNN's index is the classID directly, no +1.
+      row.querySelector('select[name="inv_item"]').value = String(parseInt(m[1], 10));
+      row.querySelector('input[name="inv_qty"]').value = val;
+      continue;
+    }
+    const el = form.elements[key];
+    if (el) {
+      // older configs use -1 for an empty slot
+      if (el.tagName === 'SELECT' && String(val) === '-1' &&
+          !el.querySelector('option[value="-1"]')) {
+        el.value = '';
+      } else {
+        el.value = val;
+      }
+    }
+  }
+  if (document.querySelectorAll('#invRows .invrow').length === 0) {
+    addInvRow();
+  }
+}
+
+async function browseInto(fieldId, endpoint) {
+  try {
+    const resp = await fetch(endpoint);
+    if (!resp.ok) {
+      alert(await resp.text());
+      return;
+    }
+    const { path } = await resp.json();
+    if (path) {
+      document.getElementById(fieldId).value = path;
+      if (fieldId === 'input') fillPathsFromInput();
+    }
+  } catch (err) {
+    alert('Failed to open file dialog: ' + err);
+  }
+}
+document.getElementById('browseInputBtn').addEventListener('click', () => browseInto('input', '/browse-input'));
+document.getElementById('browseOutputBtn').addEventListener('click', () => browseInto('output', '/browse-output'));
+
+// Picking an input ISO fills in the two paths that hang off it with placeholders if needed
+function fillPathsFromInput() {
+  const input = document.getElementById('input').value.trim();
+  if (!input) return;
+  const cut = Math.max(input.lastIndexOf('\\'), input.lastIndexOf('/'));
+  if (cut < 0) return;
+  const dir = input.slice(0, cut + 1);
+  const seed = document.getElementById('seed').value.trim() || '<seed>';
+
+  const out = document.getElementById('output');
+  if (!out.value.trim() || out.dataset.auto === '1') {
+    out.value = dir + 'KF4_' + seed + '.iso';
+    out.dataset.auto = '1';
+  }
+  const log = document.getElementById('spoiler');
+  if (!log.value.trim() || log.dataset.auto === '1') {
+    log.value = dir + 'spoiler_' + seed + '.log';
+    log.dataset.auto = '1';
+  }
+}
+document.getElementById('input').addEventListener('change', fillPathsFromInput);
+document.getElementById('seed').addEventListener('change', fillPathsFromInput);
+for (const id of ['output', 'spoiler']) {
+  document.getElementById(id).addEventListener('input', (e) => { e.target.dataset.auto = ''; });
+}
+
+document.getElementById('loadBtn').addEventListener('click', () => {
+  document.getElementById('loadFile').click();
+});
+document.getElementById('loadFile').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const resp = await fetch('/load-config', { method: 'POST', body: text });
+    if (!resp.ok) {
+      alert(await resp.text());
+      return;
+    }
+    applyConfigToForm(await resp.json());
+  } catch (err) {
+    alert('Failed to load config: ' + err);
+  } finally {
+    e.target.value = '';
+  }
+});
+</script>
+
+</body>
+</html>

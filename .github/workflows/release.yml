@@ -1,0 +1,54 @@
+name: Release
+
+# Any tag push, the release is created if the tag has none yet.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write # to create the release and upload the builds
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Test
+        run: go test ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      # Nothing here needs cgo, so a Linux runner can cross-compile both.
+      - name: Build randomizer-cli.exe
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: 0
+        run: go build -o randomizer-cli.exe ./cmd/randomizer
+
+      - name: Build randomizer-gui.exe
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: 0
+        run: go build -o randomizer-gui.exe ./cmd/randomizer-gui
+
+      - name: Prepare config.default.yaml
+        run: cp config.example.yaml config.default.yaml
+
+      - name: Publish release with assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            randomizer-cli.exe
+            randomizer-gui.exe
+            config.default.yaml

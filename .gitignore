@@ -1,0 +1,20 @@
+# Build output
+*.exe
+*.test
+
+# Local run artifacts
+/debug_data/
+/*.yaml
+spoiler_*.log
+
+# The release workflow ships this one as config.default.yaml.
+!/config.example.yaml
+
+# Editor
+.idea/
+.vscode/
+.junie/
+
+# Extracted from the retail disc, kept local only.
+/internal/resources/item_nam.prm
+/internal/resources/0611.ini
