@@ -36,13 +36,30 @@ The Guiding stones are NOT randomized yet. Green and blue stones are already pla
     Use the eyes on the door at the end of the Passage of Light, and convert the Blade to the Moonlight Sword.  
     Then, kill the final boss using a final slash from the sword.
 
+- **Names**
+  - if anything (maps, monsters, etc) is named by anything, it comes from the KF4 official guide book (99% of the time at least).
+
 - **Black Eyes**
   - I decided for now to not randomize them (they're in the 4 chests in the Holy Forest, as usual). It makes more sense to find randomized keys to unlock those, in my opinion. Maybe a setting later.
 
 - **Binding Crown**
+  - The first crown found usually in vanilla is not randomized, since you're expected to grab it and run, and logic around this is annoying (kill golem with projectile or specific conditions to grab those 2 items)
 
-The first crown found usually in vanilla is not randomized, since you're expected to grab it and run, and logic around this is annoying (kill golem with projectile or specific conditions to grab those 2 items)
-The pedestals randomized are
+- **Other logic considerations / QoL**
+  - projectile weapon (bow/crossbow) are weirdly needed in logic. To compensate the fact that you might need arrows, all shops sell arrows/bolts/Widda Arrows.
+  - Teleporting wands can be used anywhere by default; this might break stuff (use it while falling to your death), but you do you, it's QoL, and you can disable it.
+
+## L3+R3 Debug Menu
+
+This was made for me to navigate the game a bit easier. L3+R3 toggles menu visibility. 
+Cross to validate, Square to return back one menu. Features :
+
+- HUD : Map ID, latest item grabbed, list of all items available (spoiled, if randomized), and their coordinates, player coordinates.
+- Warp : warps you like a wand, to any map. **IMPORTANT** some maps are "one way" (you enter it, exit it, and you can't access any other map). Since the game has 2 buffers for maps, it loads the one you came from, and the one you are in. Meaning, if you warp to those maps, you will never find a loading triangle on the ground to exit it, it's broken for now.
+the Warp feature needs a list of those maps with conditions ("if warping to map X, also load map Y to be able to walk out" basically).
+- Levitate : a weird one, just easier to go around in the Central Tower maps. Activate it = you cannot increase your Y coordinate = you cannot fall.
+Disable to start falling again - fall damage **is** calculated from where you disabled; you just lose some invisible ground under you.
+
 ## Things to know in randomizer
 
 - **Model swapping**
@@ -55,7 +72,9 @@ if a map has 10*Herbs + 5*Antidotes to find, the array is size 2; if you randomi
 
 - **The Forge's boss**
 
-The Forge is one room in 3 states (maps 17/18/19), and its boss only exists in 18. When monster drops are randomized, he's moved to 19 along with his loot, so his drop isn't duplicated across states. With monster drops off, he stays in 18 like vanilla.
+The Forge is one room in 3 states (maps 17/18/19), and its boss only exists in 18. 
+When monster drops are randomized, he appears in both 18 and 19 (forge super hot, and forge regular hot) but he only drops his check in 19, so his drop isn't duplicated across states. 
+With monster drops off, he stays in 18 like vanilla.
 
 - **Starting character**
 
@@ -63,18 +82,23 @@ The starting character is unchanged, but can be modified via the Cheats panel in
 
 - **Some advice**
 
-1. The game is hard, and takes a while to get started (because of Physical and Magical being low, and MP being low). Knowing this, I strongly advise you to give yourself
-more starting stats if you want a "short enough" rando.
-2. If you do not want to search for fake walls all the time : give yourself **Myu's Necklace**. Wearing it makes them shine green.  
+1. If you do not want to search for fake walls all the time : give yourself **Myu's Necklace**. Wearing it makes them shine green.  
 Same thing with **King's Map** : if you want a real game map, this is as close as it gets. Those items will still be randomized, but having 2 of those doesn't matter.
-3. Breaking containers (crates/barrels) works with a specific formula that uses all damage types. Containers have some resistances (for ex. barrels have a 90 slash resist), which subtract from that damage type. Otherwise, all damage types are added, Physical helps
-4. QoL patches :
+2. Breaking containers (crates/barrels) works with a specific formula that uses all damage types. Containers have some resistances (for ex. barrels have a 90 slash resist), which subtract from that damage type. Otherwise, all damage types are added, Physical helps.
+Logic should account for this, but it's not entirely tested (and it's very annoying to do so), an automated script got what is implemented now.
+3. QoL patches :
    - full analog controls helps with comfort (if you have a bad left hand, which I do)
    - enable joystick clamping if diagonals behave weirdly (character just completely stops walking if you hold a perfect diagonal)
-5. 
+4. Game is long, and can be difficult. EXP / Gold multipliers are here to help out a bit.
+
+## Known Issues
+
+- With ground items randomizer OFF, vanilla ground items will still show up with the gem model. Conditional model swapping is annoying.
+- The Debug mode's HUD item list for monsters is wrong after loading a savefile (only kept in RAM).
 
 ## Future stuff
 
+Some items are not randomized, either because I didn't find how to get them, or because logic is a bit too complex for now. Or, they have weird mechanics associated to them so more reverse engineer is needed.
 See [TODO.md](TODO.md) for notes of planned features if you're curious.
 
 ## Compilation
@@ -82,7 +106,7 @@ See [TODO.md](TODO.md) for notes of planned features if you're curious.
 If for some reason, you need to compile it yourself :
 - grab Go's latest version on [golang.org](https://golang.org)
 - run `go build ./cmd/randomizer-gui/` (or `go build ./cmd/randomizer/`) for CLI version
-- launch whichever executable. CLI requires a valid .yaml file, `config.example.yaml` has comments on which parameter does what. I strongly advice GUI, it's 1:1 on features.
+- launch whichever executable. CLI requires a valid .yaml file, `config.example.yaml` has comments on which parameter does what. GUI is simpler.
 
 ## Bugs
 
