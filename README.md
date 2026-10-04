@@ -15,6 +15,8 @@ You will need :
 
 ## Features
 
+### Randomizer
+
 Randomized items are split in categories :
 - ground items (visible and grabbable)
 - containers (chest, barrel, crate, pots)
@@ -24,7 +26,19 @@ Randomized items are split in categories :
 
 Random monster drops are left as-is, maybe later.
 
-The Guiding stones are NOT randomized yet. Green and blue stones are already placed, and using a green wand is expected in logic.
+The Guiding stones are NOT randomized yet.
+
+### QoL
+
+Some QoL patches are enabled by default, others simply available.
+
+- Lower output ISO size : simply remove useless files. This might be bad on actual hardware, since those files are apparently designed that way to help the DVD reader read sectors "in order" or "faster".
+- Remove empty containers : places empty crates/barrels/pots/stuff (there's a lot of those) out of bounds so you have less things to break, and you know easily which barrel has a check.
+- Use wands anywhere : no need to step on a teleport pad to use a wand. You only need the Guiding Stone placed.
+- Show item slot index in pickup text : Instead of picking up "Herb", you might pick up "Herb (#N)" with N being its index in the map. Just debug stuff, don't bother if you're not actively testing issues.
+- Debug menu (L3+R3) : see the section a bit below.
+- Joystick clamping : if diagonals behave weirdly (character just completely stops walking if you hold a perfect diagonal). It does require full analog stick, which is more comfortable for players not used to the control scheme.
+- other QoL should be clear enough.
 
 ## Logic / Spheres
 
@@ -46,6 +60,7 @@ The Guiding stones are NOT randomized yet. Green and blue stones are already pla
   - The first crown found usually in vanilla is not randomized, since you're expected to grab it and run, and logic around this is annoying (kill golem with projectile or specific conditions to grab those 2 items)
 
 - **Other logic considerations / QoL**
+  - Green and blue stones are already placed, **and using the Green Wand is expected in logic.** In vanilla, you use it after exploring all of the King's throne maps, above the ancient city.
   - projectile weapon (bow/crossbow) are weirdly needed in logic. To compensate the fact that you might need arrows, all shops sell arrows/bolts/Widda Arrows.
   - Teleporting wands can be used anywhere by default; this might break stuff (use it while falling to your death), but you do you, it's QoL, and you can disable it.
 
@@ -86,10 +101,7 @@ The starting character is unchanged, but can be modified via the Cheats panel in
 Same thing with **King's Map** : if you want a real game map, this is as close as it gets. Those items will still be randomized, but having 2 of those doesn't matter.
 2. Breaking containers (crates/barrels) works with a specific formula that uses all damage types. Containers have some resistances (for ex. barrels have a 90 slash resist), which subtract from that damage type. Otherwise, all damage types are added, Physical helps.
 Logic should account for this, but it's not entirely tested (and it's very annoying to do so), an automated script got what is implemented now.
-3. QoL patches :
-   - full analog controls helps with comfort (if you have a bad left hand, which I do)
-   - enable joystick clamping if diagonals behave weirdly (character just completely stops walking if you hold a perfect diagonal)
-4. Game is long, and can be difficult. EXP / Gold multipliers are here to help out a bit.
+3. Game is long, and can be difficult. EXP / Gold multipliers are here to help out a bit.
 
 ## Known Issues
 
@@ -97,6 +109,9 @@ Logic should account for this, but it's not entirely tested (and it's very annoy
 - The Debug mode's HUD item list for monsters is wrong after loading a savefile (only kept in RAM).
 
 ## Future stuff
+
+Paramdomizer is available but not on the GUI, I made it super early in the project and it probably needs tweaking. I'd honestly like to have other features before that I think, it was something that looked like a quick win.
+If you want it you should be able to enable it in the config.yaml and specify a % range of stat modifiers. It'll randomize some stats around for weapons/armors.
 
 Some items are not randomized, either because I didn't find how to get them, or because logic is a bit too complex for now. Or, they have weird mechanics associated to them so more reverse engineer is needed.
 See [TODO.md](TODO.md) for notes of planned features if you're curious.
