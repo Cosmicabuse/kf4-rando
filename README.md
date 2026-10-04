@@ -13,6 +13,17 @@ You will need :
   - **Note**: The randomizer checks for compatible checksums on run, no need to do it yourself.
 - The latest release from this repository for your system (randomizer-gui.exe for a web interface, randomizer-cli.exe for CLI with a yaml config)
 
+Base usage setup if you don't want to bother too much :
+- Open randomizer-gui.exe (download from Github Releases)
+- It should open a web page. Browse your US NTSC ISO of KF4.
+- Quality of Life : choose what you want to enable/disable.
+- Randomizer : choose what pools should be randomized, and if you want multipliers for XP/Gold (to streamline a bit)
+- Cheats : if you want to start with specific items. 
+  - **IF you're not familiar with hidden walls** you can give yourself Myu's Necklace there, you can see hidden walls with it.
+- Save as config.yaml : if you want to keep your settings. MIGHT BREAK ON UPDATES, if features are added.
+- Run. If all worked fine, you should have a randomized ISO and logs next to the source ISO.
+- To quit, exit page / exit terminal window from launching the .exe
+
 ## Features
 
 ### Randomizer
