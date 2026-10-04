@@ -3,6 +3,7 @@ package runner
 import (
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -20,6 +21,7 @@ import (
 	"kf4randomizer/internal/isopatch"
 	"kf4randomizer/internal/kfconst"
 	"kf4randomizer/internal/kfmap"
+	"kf4randomizer/internal/logic"
 	"kf4randomizer/internal/report"
 	"kf4randomizer/internal/resources"
 )
@@ -236,6 +238,13 @@ func Run(w io.Writer, cfg *Config) error {
 		return err
 	}
 
+	if cfg.WandsAnywhere {
+		if err := isopatch.WriteSlusWord(f, slusEntry.ByteOffset(), kfconst.SlusWandPadCheckVAddr, kfconst.SlusWandPadCheckSkip); err != nil {
+			return fmt.Errorf("letting wands work anywhere: %w", err)
+		}
+		_, _ = fmt.Fprintln(w, "Wands now work anywhere, not just on teleport pads")
+	}
+
 	if err := isopatch.PatchPickupPopup(f, slusEntry.ByteOffset(), cfg.PickupPopupShowItemIndex); err != nil {
 		return fmt.Errorf("patching pickup-name popup: %w", err)
 	}
@@ -293,6 +302,9 @@ func Run(w io.Writer, cfg *Config) error {
 	// always on, it fixes a vanilla bug
 	respawnResult := itemrespawn.Normalize(data.maps)
 	_, _ = fmt.Fprint(w, respawnResult.Summary())
+	if n := itemrespawn.MoveStuck(data.maps); n > 0 {
+		_, _ = fmt.Fprintf(w, "Moved %d ground item(s) out of spots where they can't be picked up\n", n)
+	}
 
 	if !cfg.DisableRandomizer || cfg.EnableParamdomizer || cfg.RandomizeShops {
 		if err := randomizeAll(w, cfg, f, slusEntry.ByteOffset(), data, *cfg.Seed); err != nil {
@@ -302,7 +314,7 @@ func Run(w io.Writer, cfg *Config) error {
 		_, _ = fmt.Fprintln(w, "Nothing to randomize")
 	}
 
-	if cfg.SharedItemModel {
+	if !cfg.DisableRandomizer {
 		if err := applySharedItemModel(w, cfg, data); err != nil {
 			return err
 		}
@@ -360,10 +372,7 @@ func applyTitleBranding(w io.Writer, f *os.File, data *gameData) error {
 // applySharedItemModel repoints every map's item-model chunk at one model, so
 // pickups look the same wherever they ended up.
 func applySharedItemModel(w io.Writer, cfg *Config, data *gameData) error {
-	scale := cfg.SharedItemModelScale
-	if scale == 0 {
-		scale = 1
-	}
+	const scale = 3.0
 	model, err := itemmodel.Scale(resources.SharedItemModel, scale)
 	if err != nil {
 		return fmt.Errorf("scaling the shared item model: %w", err)
@@ -406,9 +415,20 @@ func randomizeAll(w io.Writer, cfg *Config, f *os.File, slus int64, data *gameDa
 			_, _ = fmt.Fprintf(w, "!! %v, the Fire Lord keeps its drop\n", err)
 		}
 
-		filled, placements, err := randomize.RunLogic(data.maps, chr, randomize.NewRand(seed), cfg.UseMonsterDrops())
+		var stock []byte
+		if cfg.Pool().Shops {
+			if stock, err = isopatch.ReadSlusBytes(f, slus, kfconst.SlusShopStockVAddr, kfconst.ShopCount*kfconst.ShopStockSize); err != nil {
+				return err
+			}
+		}
+		filled, placements, err := randomize.RunLogic(data.maps, chr, stock, randomize.NewRand(seed), cfg.Pool())
 		if err != nil {
 			return fmt.Errorf("logic fill: %w", err)
+		}
+		if stock != nil {
+			if err := isopatch.WriteSlusBytes(f, slus, kfconst.SlusShopStockVAddr, stock); err != nil {
+				return err
+			}
 		}
 		if chr != nil {
 			if err := isopatch.WriteDatMember(f, chrEntry, chr); err != nil {
@@ -416,11 +436,23 @@ func randomizeAll(w io.Writer, cfg *Config, f *os.File, slus int64, data *gameDa
 			}
 		}
 		result = filled
-		sphereLog = report.Spheres(placements, cfg.UseMonsterDrops(), data.itemNames, data.mapNames)
+		sphereLog = report.Spheres(placements, cfg.Pool(), data.itemNames, data.mapNames)
 		_, _ = fmt.Fprint(w, result.Summary(data.mapNames))
 	default:
-		result = randomize.RunNoLogic(data.maps, randomize.NewRand(seed), cfg.RandomizeContainerItems, cfg.UseMonsterDrops())
+		result = randomize.RunNoLogic(data.maps, randomize.NewRand(seed), cfg.Pool())
 		_, _ = fmt.Fprint(w, result.Summary(data.mapNames))
+	}
+
+	if !cfg.DisableRandomizer {
+		if err := scaleRewards(w, cfg, f, data); err != nil {
+			return err
+		}
+	}
+
+	if result.StartItem != 0 {
+		if err := swapStartingIdol(w, cfg, f, data, result.StartItem); err != nil {
+			return err
+		}
 	}
 
 	if cfg.EnableParamdomizer {
@@ -453,6 +485,60 @@ func randomizeAll(w io.Writer, cfg *Config, f *os.File, slus int64, data *gameDa
 	return nil
 }
 
+// scaleRewards multiplies the gold and experience monsters give, in chr.prm.
+func scaleRewards(w io.Writer, cfg *Config, f *os.File, data *gameData) error {
+	gold := cfg.GoldMultiplier > 0 && cfg.GoldMultiplier != 1
+	exp := cfg.ExpMultiplier > 0 && cfg.ExpMultiplier != 1
+	if !gold && !exp {
+		return nil
+	}
+	chr, entry, err := data.read(f, chrDatPath)
+	if err != nil {
+		_, _ = fmt.Fprintf(w, "!! %v, gold and experience stay vanilla\n", err)
+		return nil
+	}
+	if gold {
+		n := kfmap.ScaleChrGold(chr, cfg.GoldMultiplier)
+		_, _ = fmt.Fprintf(w, "Gold drops x%g on %d monster types\n", cfg.GoldMultiplier, n)
+	}
+	if exp {
+		n := kfmap.ScaleChrExp(chr, cfg.ExpMultiplier)
+		_, _ = fmt.Fprintf(w, "Experience x%g on %d monster types\n", cfg.ExpMultiplier, n)
+	}
+	if err := isopatch.WriteDatMember(f, entry, chr); err != nil {
+		return fmt.Errorf("writing %s back into DAT: %w", chrDatPath, err)
+	}
+	return nil
+}
+
+// swapStartingIdol rewrites the starting ini so the new game starts with give
+// instead of the Idol of Sorrow, on top of any starting_config overrides.
+func swapStartingIdol(w io.Writer, cfg *Config, f *os.File, data *gameData, give uint16) error {
+	overrides := maps.Clone(cfg.StartingConfig)
+	if overrides == nil {
+		overrides = map[string]int{}
+	}
+	overrides[fmt.Sprintf("item_%03d", logic.IdolOfSorrow)] = 0
+	withUser, err := startingconfig.ApplyOverrides(startingconfig.BaseINI, overrides)
+	if err != nil {
+		return err
+	}
+	overrides[fmt.Sprintf("item_%03d", give)] = min(startingconfig.ItemQuantity(withUser, int(give))+1, 99)
+	ini, err := startingconfig.ApplyOverrides(startingconfig.BaseINI, overrides)
+	if err != nil {
+		return err
+	}
+	if err := isopatch.WriteDatMemberResized(f, data.dat[startingIniDatPath], ini); err != nil {
+		return fmt.Errorf("swapping the starting Idol of Sorrow: %w", err)
+	}
+	name := fmt.Sprint(give)
+	if data.itemNames != nil {
+		name = data.itemNames.NameOrDefault(give, name)
+	}
+	_, _ = fmt.Fprintf(w, "Starting inventory gets %s instead of the Idol of Sorrow\n", name)
+	return nil
+}
+
 // runShops shuffles the gold shops when asked, and stocks them with ammo
 // whenever items move at all, since the logic counts any bow as usable.
 func runShops(w io.Writer, cfg *Config, f *os.File, slus int64, seed uint64) (*shops.Result, error) {
@@ -468,7 +554,8 @@ func runShops(w io.Writer, cfg *Config, f *os.File, slus int64, seed uint64) (*s
 		return nil, err
 	}
 
-	if cfg.RandomizeShops {
+	// With logic on, the fill already stocked the shops.
+	if cfg.RandomizeShops && !cfg.UseLogicFill() {
 		if err := shops.Shuffle(stock, shops.NewRand(seed)); err != nil {
 			return nil, fmt.Errorf("shuffling shops: %w", err)
 		}

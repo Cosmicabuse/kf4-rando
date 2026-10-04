@@ -7,6 +7,7 @@ import (
 	"math/rand/v2"
 	"sort"
 
+	"kf4randomizer/internal/features/shops"
 	"kf4randomizer/internal/kfconst"
 	"kf4randomizer/internal/kfmap"
 	"kf4randomizer/internal/logic"
@@ -25,6 +26,8 @@ const (
 	MapDrop
 	// PrmDrop lives in chr.prm rather than a map, keyed by creature class.
 	PrmDrop
+	// StartItem is the starting inventory's Idol of Sorrow.
+	StartItem
 )
 
 // Change records one shuffled slot's before/after classID, for the spoiler log.
@@ -41,6 +44,7 @@ type Result struct {
 	EligibleSlots int
 	ChangedPerMap map[string]int // map name -> number of slots changed
 	Changes       []Change
+	StartItem     uint16 // what replaces the Idol of Sorrow at the start, 0 if it stays
 }
 
 // Summary counts changes per map. mapNames may be nil.
@@ -65,19 +69,17 @@ type slot struct {
 
 // RunNoLogic shuffles classIDs across every eligible slot, with no
 // reachability check, so a seed can be unwinnable.
-func RunNoLogic(maps []*kfmap.Map, rng *rand.Rand, includeContainers, includeDrops bool) Result {
+func RunNoLogic(maps []*kfmap.Map, rng *rand.Rand, kinds logic.Pool) Result {
 	sort.Slice(maps, func(i, j int) bool { return maps[i].Name < maps[j].Name })
-	if includeDrops {
+	if kinds.Drops {
 		moveForgeDwarf(maps)
 	}
 	rules := logic.Rules()
-	// A kept drop keeps every slot sharing its pickup too.
+	// A kept slot keeps every slot sharing its pickup too.
 	pinned := map[string]bool{}
-	if !includeDrops {
-		for where, r := range rules {
-			if where.Slot == logic.MapDrop && r.Dupe != "" {
-				pinned[r.Dupe] = true
-			}
+	for where, r := range rules {
+		if !kinds.Has(where.Slot) && r.Dupe != "" {
+			pinned[r.Dupe] = true
 		}
 	}
 	shares := func(name string, kind logic.Slot, index int) bool {
@@ -88,6 +90,9 @@ func RunNoLogic(maps []*kfmap.Map, rng *rand.Rand, includeContainers, includeDro
 	var originalClassIDs []uint16
 	for mi, m := range maps {
 		for _, item := range m.Items {
+			if !kinds.Ground {
+				break
+			}
 			if item.ClassID == 0 || !kfconst.IsKnownClassID(item.ClassID) || kfconst.IsExcludedFromRandomization(item.ClassID) {
 				continue
 			}
@@ -98,7 +103,7 @@ func RunNoLogic(maps []*kfmap.Map, rng *rand.Rand, includeContainers, includeDro
 			slots = append(slots, slot{mapIdx: mi, kind: GroundItem, idx: item.Index})
 			originalClassIDs = append(originalClassIDs, item.ClassID)
 		}
-		if includeContainers {
+		if kinds.Containers {
 			for ci, c := range m.Containers {
 				if c.ItemClassID == 0 || !kfconst.IsKnownClassID(c.ItemClassID) || kfconst.IsExcludedFromRandomization(c.ItemClassID) {
 					continue
@@ -112,7 +117,7 @@ func RunNoLogic(maps []*kfmap.Map, rng *rand.Rand, includeContainers, includeDro
 		}
 		// No two drops share a creature, so each shuffles independently.
 		for ri, c := range m.Creatures {
-			if !includeDrops {
+			if !kinds.Drops {
 				break
 			}
 			if !kfconst.IsKnownClassID(c.DropClassID) || kfconst.IsExcludedFromRandomization(c.DropClassID) {
@@ -129,6 +134,11 @@ func RunNoLogic(maps []*kfmap.Map, rng *rand.Rand, includeContainers, includeDro
 	// Slots the game shares draw one item between them, so only the first of
 	// each group goes into the pool and the rest copy it afterwards.
 	twin := twins(maps, slots)
+	if kinds.Idol {
+		slots = append(slots, slot{kind: StartItem})
+		originalClassIDs = append(originalClassIDs, logic.IdolOfSorrow)
+		twin = append(twin, -1)
+	}
 	var own []int
 	var pool []uint16
 	for i := range slots {
@@ -152,7 +162,12 @@ func RunNoLogic(maps []*kfmap.Map, rng *rand.Rand, includeContainers, includeDro
 
 	changedPerMap := make(map[string]int)
 	var changes []Change
+	var startItem uint16
 	for i, s := range slots {
+		if s.kind == StartItem {
+			startItem = shuffled[i]
+			continue
+		}
 		m := maps[s.mapIdx]
 		from := originalClassIDs[i]
 		to := shuffled[i]
@@ -186,6 +201,7 @@ func RunNoLogic(maps []*kfmap.Map, rng *rand.Rand, includeContainers, includeDro
 		EligibleSlots: len(slots),
 		ChangedPerMap: changedPerMap,
 		Changes:       changes,
+		StartItem:     startItem,
 	}
 }
 
@@ -281,14 +297,17 @@ func sortChanges(changes []Change) {
 }
 
 // RunLogic places every item somewhere reachable without already holding it.
-func RunLogic(maps []*kfmap.Map, chr []byte, rng *rand.Rand, includeDrops bool) (Result, []logic.Placement, error) {
+func RunLogic(maps []*kfmap.Map, chr, stock []byte, rng *rand.Rand, pool logic.Pool) (Result, []logic.Placement, error) {
 	clearCrownPedestals(maps)
 
 	// The forge boss only moves so his drop can be shuffled.
-	if includeDrops {
+	if pool.Drops {
 		moveForgeDwarf(maps)
 	}
-	w, start := logic.ForSeed(includeDrops)
+	if pool.Shops && stock == nil {
+		return Result{}, nil, fmt.Errorf("shops are in the pool but no shop stock was given")
+	}
+	w, start := logic.ForSeed(pool)
 
 	placements, err := w.Fill(start, rng)
 	if err != nil {
@@ -306,8 +325,22 @@ func RunLogic(maps []*kfmap.Map, chr []byte, rng *rand.Rand, includeDrops bool) 
 
 	out := Result{TotalMaps: len(maps), ChangedPerMap: map[string]int{}}
 	var missed []string
+	if pool.Shops {
+		shops.Clear(stock)
+	}
 	for _, p := range placements {
-		if p.Check.Fill != logic.Shuffle && p.Check.Fill != logic.Copy {
+		// The pedestal crowns land on map 020's ground even when ground items
+		// stay vanilla, or they would be gone.
+		crown := p.Check.Fill == logic.Fixed && p.Check.Slot == logic.Ground && p.Item == logic.BindingCrown
+		if p.Check.Fill != logic.Shuffle && p.Check.Fill != logic.Copy && p.Check.Fill != logic.Filler && !crown {
+			continue
+		}
+		if p.Check.Slot == logic.Shop {
+			shops.Add(stock, logic.ShopNumber(p.Check), p.Item)
+			continue
+		}
+		if p.Check.Slot == logic.Start {
+			out.StartItem = p.Item
 			continue
 		}
 		if p.Check.Slot == logic.PrmDrop {

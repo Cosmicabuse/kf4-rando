@@ -199,6 +199,15 @@ const (
 	SlusBlackVoidFixInstruction = 0x46150036
 )
 
+// The wand case in KFItemUse only warps when standing on a teleport pad.
+// Branching straight to the warp call skips that check.
+const (
+	SlusWandPadCheckVAddr = 0x1BC598
+
+	// b 0x1BC5B0, jal to KFWandWarpToStone
+	SlusWandPadCheckSkip = 0x10000005
+)
+
 func SlusVAddrToFileOffset(vaddr int) int {
 	return vaddr - SlusElfTextVAddr + SlusElfTextFileOff
 }

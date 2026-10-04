@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 
 	"kf4randomizer/internal/features/randomize"
 	"kf4randomizer/internal/isopatch"
@@ -23,9 +24,14 @@ var mapNameRE = regexp.MustCompile(`^\d{3}\.map$`)
 func main() {
 	iso := flag.String("iso", "", "source ISO to fill against; omit to report the unmodified game")
 	seed := flag.Uint64("seed", 1, "fill seed")
+	ground := flag.Bool("ground", true, "shuffle ground items")
+	containers := flag.Bool("containers", true, "shuffle containers")
 	drops := flag.Bool("drops", true, "shuffle monster drops")
+	idol := flag.Bool("idol", true, "shuffle the Idol of Sorrow")
+	shopsOn := flag.Bool("shops", false, "put the gold shops in the pool")
 	out := flag.String("o", "", "write the report to this file instead of stdout")
 	flag.Parse()
+	pool := logic.Pool{Ground: *ground, Containers: *containers, Drops: *drops, Idol: *idol, Shops: *shopsOn}
 
 	names := kfmap.LoadClassIDToName(resources.ItemNamPRM)
 	mapNames, err := kfmap.LoadMapNames(resources.MapNamesCSV)
@@ -39,17 +45,29 @@ func main() {
 		if err != nil {
 			fail(err)
 		}
-		res, ps, err := randomize.RunLogic(maps, make([]byte, 269*0x450), randomize.NewRand(*seed), *drops)
+		stock := make([]byte, kfconst.ShopCount*kfconst.ShopStockSize)
+		res, ps, err := randomize.RunLogic(maps, make([]byte, 269*0x450), stock, randomize.NewRand(*seed), pool)
 		if err != nil {
 			fail(fmt.Errorf("fill: %w", err))
 		}
 		placements = ps
 		fmt.Printf("seed %d: %d maps, %d slots written, %d changed\n",
 			*seed, res.TotalMaps, res.EligibleSlots, len(res.Changes))
+		if pool.Shops {
+			for shop := range kfconst.ShopGoldCount {
+				var sold []string
+				for id := 1; id < kfconst.ShopStockSize; id++ {
+					if stock[shop*kfconst.ShopStockSize+id] != 0 {
+						sold = append(sold, names.NameOrDefault(uint16(id), fmt.Sprint(id)))
+					}
+				}
+				fmt.Printf("shop %d: %s\n", shop, strings.Join(sold, ", "))
+			}
+		}
 		checkWrites(maps, names)
 	}
 
-	text := report.Spheres(placements, *drops, names, mapNames)
+	text := report.Spheres(placements, pool, names, mapNames)
 	if *out == "" {
 		fmt.Print(text)
 		return

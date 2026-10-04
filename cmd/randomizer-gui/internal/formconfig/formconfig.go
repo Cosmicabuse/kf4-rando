@@ -29,13 +29,18 @@ type config struct {
 	StartingConfig           map[string]int `yaml:"starting_config" json:"starting_config"`
 	StripDummyFiles          bool           `yaml:"strip_dummy_files" json:"strip_dummy_files"`
 	RemoveEmptyContainers    bool           `yaml:"remove_empty_containers" json:"remove_empty_containers"`
-	RandomizeContainerItems  bool           `yaml:"randomize_container_items" json:"randomize_container_items"`
+	RandomizeGroundItems     *bool          `yaml:"randomize_ground_items" json:"randomize_ground_items"`
+	RandomizeContainerItems  *bool          `yaml:"randomize_container_items" json:"randomize_container_items"`
 	RandomizeMonsterDrops    *bool          `yaml:"randomize_monster_drops" json:"randomize_monster_drops"`
+	RandomizeIdolOfSorrow    *bool          `yaml:"randomize_idol_of_sorrow" json:"randomize_idol_of_sorrow"`
 	RandomizeShops           bool           `yaml:"randomize_shops" json:"randomize_shops"`
+	GoldMultiplier           float64        `yaml:"gold_multiplier" json:"gold_multiplier"`
+	ExpMultiplier            float64        `yaml:"exp_multiplier" json:"exp_multiplier"`
 	LogicFill                *bool          `yaml:"logic_fill" json:"logic_fill"`
 	PickupPopupShowItemIndex bool           `yaml:"pickup_popup_show_item_index" json:"pickup_popup_show_item_index"`
 	DisableRandomizer        bool           `yaml:"disable_randomizer" json:"disable_randomizer"`
 	FullDebugMode            bool           `yaml:"full_debug_mode" json:"full_debug_mode"`
+	WandsAnywhere            bool           `yaml:"wands_anywhere" json:"wands_anywhere"`
 }
 
 // FromForm goes through YAML so the GUI is validated like the CLI.
@@ -63,7 +68,18 @@ func FromForm(r *http.Request) (*runner.Config, error) {
 
 	off := r.FormValue("randomizer") == "off"
 	logicFill := r.FormValue("logic") != "none"
+	ground := r.FormValue("randomize_ground_items") != ""
+	containers := r.FormValue("randomize_container_items") != ""
 	drops := r.FormValue("randomize_monster_drops") != ""
+	idol := r.FormValue("randomize_idol_of_sorrow") != ""
+	gold, err := multiplier(r, "gold_multiplier")
+	if err != nil {
+		return nil, err
+	}
+	exp, err := multiplier(r, "exp_multiplier")
+	if err != nil {
+		return nil, err
+	}
 
 	// cheat fields are hidden when cheats are off, ignore them
 	if r.FormValue("enable_cheats") == "" {
@@ -79,13 +95,18 @@ func FromForm(r *http.Request) (*runner.Config, error) {
 		StartingConfig:           startingConfig,
 		StripDummyFiles:          r.FormValue("strip_dummy_files") != "",
 		RemoveEmptyContainers:    r.FormValue("remove_empty_containers") != "",
-		RandomizeContainerItems:  r.FormValue("randomize_container_items") != "",
+		RandomizeGroundItems:     &ground,
+		RandomizeContainerItems:  &containers,
 		RandomizeMonsterDrops:    &drops,
+		RandomizeIdolOfSorrow:    &idol,
 		RandomizeShops:           !off && r.FormValue("randomize_shops") != "",
+		GoldMultiplier:           gold,
+		ExpMultiplier:            exp,
 		LogicFill:                &logicFill,
 		PickupPopupShowItemIndex: r.FormValue("pickup_popup_show_item_index") != "",
 		DisableRandomizer:        off,
 		FullDebugMode:            r.FormValue("full_debug_mode") != "",
+		WandsAnywhere:            r.FormValue("wands_anywhere") != "",
 	}
 
 	yamlBytes, err := yaml.Marshal(raw)
@@ -131,6 +152,19 @@ func resolveSeed(seedStr string) (uint64, error) {
 		return 0, fmt.Errorf("seed: %q is not a valid number: %w", seedStr, err)
 	}
 	return seed, nil
+}
+
+// multiplier reads one of the reward dropdowns, 1 when blank.
+func multiplier(r *http.Request, key string) (float64, error) {
+	v := strings.TrimSpace(r.FormValue(key))
+	if v == "" {
+		return 1, nil
+	}
+	f, err := strconv.ParseFloat(v, 64)
+	if err != nil || f < 0 {
+		return 0, fmt.Errorf("%s %q isn't a number of 0 or more", key, v)
+	}
+	return f, nil
 }
 
 // modsSelectionFromForm reads one mode choice per category, "mod_<id>".

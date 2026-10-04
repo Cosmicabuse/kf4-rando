@@ -26,7 +26,11 @@ func Spoiler(seed uint64, result randomize.Result, names kfmap.ItemNames, mapNam
 	var b strings.Builder
 	fmt.Fprintf(&b, "King's Field IV item randomizer: spoiler log\n")
 	fmt.Fprintf(&b, "Seed: %d\n", seed)
-	fmt.Fprintf(&b, "%d maps, %d slots randomized\n\n", result.TotalMaps, result.EligibleSlots)
+	fmt.Fprintf(&b, "%d maps, %d slots randomized\n", result.TotalMaps, result.EligibleSlots)
+	if result.StartItem != 0 {
+		fmt.Fprintf(&b, "Starting inventory: %s replaces Idol of Sorrow\n", names.NameOrDefault(result.StartItem, "(unknown)"))
+	}
+	b.WriteString("\n")
 
 	sections := map[string]*section{}
 	var order []string
@@ -101,12 +105,12 @@ func Shops(res shops.Result, names kfmap.ItemNames) string {
 
 // Spheres writes what each sphere opens and holds. Nil placements report the
 // unmodified game.
-func Spheres(placements []logic.Placement, drops bool, names kfmap.ItemNames, mapNames kfmap.MapNames) string {
+func Spheres(placements []logic.Placement, pool logic.Pool, names kfmap.ItemNames, mapNames kfmap.MapNames) string {
 	w, start := logic.Default()
 	if placements != nil {
 		// Placements name slots as the randomizer leaves them, not as the
 		// disc has them.
-		w, start = logic.ForSeed(drops)
+		w, start = logic.ForSeed(pool)
 		w = w.Apply(placements)
 	}
 	res := w.Solve(start)

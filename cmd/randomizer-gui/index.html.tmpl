@@ -151,6 +151,7 @@
     <div class="checkgrid">
       <label><input type="checkbox" name="strip_dummy_files" value="1" checked> Lower output ISO size</label>
       <label><input type="checkbox" name="remove_empty_containers" value="1"> Remove empty containers</label>
+      <label><input type="checkbox" name="wands_anywhere" value="1" checked> Use wands anywhere, not only on teleport pads</label>
       <label><input type="checkbox" name="pickup_popup_show_item_index" value="1"> Show item slot index in pickup text (debug)</label>
       <label title="Toggle HUD: your position, the map ID, the last item taken, and every item still in the map with its coordinates.&#10;Warp: jump to any of the 64 maps.&#10;Levitate: stops you falling.&#10;&#10;Up/Down move, X confirms, Square cancels."><input type="checkbox" name="full_debug_mode" value="1"> Debug menu (L3+R3 to toggle)</label>
     </div>
@@ -183,9 +184,35 @@
           <option value="none">No logic</option>
         </select>
       </div>
+      <div class="field">
+        <label for="gold_multiplier">Gold drop multiplier</label>
+        <select id="gold_multiplier" name="gold_multiplier">
+          <option value="0.5">x0.5</option>
+          <option value="1" selected>x1</option>
+          <option value="1.5">x1.5</option>
+          <option value="2">x2</option>
+          <option value="3">x3</option>
+          <option value="4">x4</option>
+          <option value="5">x5</option>
+          <option value="10">x10</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="exp_multiplier">Experience multiplier</label>
+        <select id="exp_multiplier" name="exp_multiplier">
+          <option value="1" selected>x1</option>
+          <option value="2">x2</option>
+          <option value="3">x3</option>
+          <option value="4">x4</option>
+          <option value="5">x5</option>
+          <option value="10">x10</option>
+        </select>
+      </div>
       <div class="checkgrid">
-        <label><input type="checkbox" id="randomize_container_items" name="randomize_container_items" value="1"> Randomize containers</label>
+        <label><input type="checkbox" id="randomize_ground_items" name="randomize_ground_items" value="1" checked> Randomize ground items</label>
+        <label><input type="checkbox" id="randomize_container_items" name="randomize_container_items" value="1" checked> Randomize containers</label>
         <label><input type="checkbox" id="randomize_monster_drops" name="randomize_monster_drops" value="1" checked> Randomize monster drops</label>
+        <label><input type="checkbox" id="randomize_idol_of_sorrow" name="randomize_idol_of_sorrow" value="1" checked> Randomize the Idol of Sorrow</label>
         <label><input type="checkbox" id="randomize_shops" name="randomize_shops" value="1"> Randomize shops</label>
       </div>
     </div>
@@ -360,8 +387,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
 // cfg.seed is a string, JSON.parse would round a 64-bit seed.
 function applyConfigToForm(cfg) {
   const simpleFields = ['input', 'output', 'spoiler', 'seed',
-    'strip_dummy_files', 'remove_empty_containers', 'randomize_container_items',
-    'randomize_shops', 'pickup_popup_show_item_index', 'full_debug_mode'];
+    'strip_dummy_files', 'remove_empty_containers', 'randomize_shops', 'wands_anywhere', 'pickup_popup_show_item_index', 'full_debug_mode'];
   for (const name of simpleFields) {
     const el = form.elements[name];
     if (!el) continue;
@@ -375,9 +401,13 @@ function applyConfigToForm(cfg) {
 
   const on = !cfg.disable_randomizer;
   form.querySelector('input[name="randomizer"][value="' + (on ? 'on' : 'off') + '"]').checked = true;
-  // logic_fill is a *bool: absent means glitchless, same as the engine.
+  // logic_fill is a *bool: absent means glitchless
   document.getElementById('logic').value = (cfg.logic_fill === false) ? 'none' : 'glitchless';
-  document.getElementById('randomize_monster_drops').checked = cfg.randomize_monster_drops !== false;
+  document.getElementById('gold_multiplier').value = String(cfg.gold_multiplier || 1);
+  document.getElementById('exp_multiplier').value = String(cfg.exp_multiplier || 1);
+  for (const name of ['randomize_ground_items', 'randomize_container_items', 'randomize_monster_drops', 'randomize_idol_of_sorrow']) {
+    document.getElementById(name).checked = cfg[name] !== false;
+  }
 
   // Any ini override in the file means the cheats were in use.
   const cheats = ['hp', 'mp', 'power', 'magic', 'level', 'exp', 'gold'];
@@ -450,7 +480,7 @@ async function browseInto(fieldId, endpoint) {
 document.getElementById('browseInputBtn').addEventListener('click', () => browseInto('input', '/browse-input'));
 document.getElementById('browseOutputBtn').addEventListener('click', () => browseInto('output', '/browse-output'));
 
-// Picking an input ISO fills in the two paths that hang off it with placeholders if needed
+// Picking an input ISO fills in the two paths with placeholders if needed
 function fillPathsFromInput() {
   const input = document.getElementById('input').value.trim();
   if (!input) return;

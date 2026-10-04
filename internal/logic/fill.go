@@ -90,14 +90,14 @@ func (w World) collect(inv Inventory, fixed []int) Inventory {
 	}
 	taken := make(map[int]bool, len(fixed))
 	for {
-		reached := w.reach(out)
+		reached, open := w.walk(out, nil)
 		grew := false
 		for _, i := range fixed {
 			c := w.Checks[i]
 			if taken[i] || c.Item == 0 {
 				continue
 			}
-			if c.within(reached) && c.Need.Met(out, w.Caps) {
+			if w.takeable(c, out, reached, open) {
 				out[c.Item]++
 				taken[i] = true
 				grew = true
@@ -112,14 +112,14 @@ func (w World) collect(inv Inventory, fixed []int) Inventory {
 // open lists the still-empty groups whose slot is reachable holding inv.
 func (w World) open(inv Inventory, gs []group, filled []bool, fixed []int) []int {
 	inv = w.collect(inv, fixed)
-	reached := w.reach(inv)
+	reached, locks := w.walk(inv, nil)
 	var out []int
 	for i, g := range gs {
 		if filled[i] {
 			continue
 		}
 		c := w.Checks[g.checks[0]]
-		if c.within(reached) && c.Need.Met(inv, w.Caps) {
+		if c.Fill != Filler && w.takeable(c, inv, reached, locks) {
 			out = append(out, i)
 		}
 	}
@@ -136,9 +136,17 @@ func (w World) Fill(start Inventory, rng *rand.Rand) ([]Placement, error) {
 	var err error
 	for i := 0; i < fillAttempts; i++ {
 		var ps []Placement
-		if ps, err = w.fillOnce(start, rng); err == nil {
-			return ps, nil
+		if ps, err = w.fillOnce(start, rng); err != nil {
+			continue
 		}
+		// The fill can't plan for keystones and rocks being used up, so a run
+		// only counts once the full solve agrees.
+		if res := w.Apply(ps).Solve(start); len(res.Unreached) > 0 {
+			err = fmt.Errorf("%d checks unreachable once locks are paid for, first %s",
+				len(res.Unreached), res.Unreached[0].ID())
+			continue
+		}
+		return ps, nil
 	}
 	return nil, fmt.Errorf("%d attempts failed, last: %w", fillAttempts, err)
 }

@@ -1,5 +1,4 @@
-// Package startingconfig edits ini/0611.ini, the new-game starting state. It
-// always starts from resources/0611.ini, not the input ISO's copy.
+// Package startingconfig edits ini/0611.ini, the New Game starting character
 package startingconfig
 
 import (
@@ -13,7 +12,7 @@ import (
 
 var BaseINI = resources.StartingConfigBaseINI
 
-// key=integer at line start, trailing comments kept
+// key=integer at line start
 func keyValueRe(key string) *regexp.Regexp {
 	return regexp.MustCompile(`(?m)^(` + regexp.QuoteMeta(key) + `=)(-?\d+)`)
 }
@@ -25,8 +24,8 @@ var equipKeys = map[string]bool{
 	"equip_ring": true, "equip_bracelet": true, "equip_amulet": true,
 }
 
-// How many of classID the ini grants.
-func itemQuantity(ini []byte, classID int) int {
+// ItemQuantity is how many of classID the ini grants.
+func ItemQuantity(ini []byte, classID int) int {
 	m := regexp.MustCompile(
 		`(?m)^item_0*` + fmt.Sprint(classID) + `=(-?\d+)`).FindSubmatch(ini)
 	if m == nil {
@@ -57,7 +56,7 @@ func grantEquipped(ini []byte) []byte {
 		if err != nil || classID < 0 {
 			continue // -1 is "nothing equipped"
 		}
-		if itemQuantity(ini, classID) > 0 {
+		if ItemQuantity(ini, classID) > 0 {
 			continue
 		}
 		re := keyValueRe(fmt.Sprintf("item_%d", classID))

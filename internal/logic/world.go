@@ -2,7 +2,6 @@ package logic
 
 import (
 	"fmt"
-	"strings"
 )
 
 // Default is the unmodified game: every crossing, every gate, and every item
@@ -17,9 +16,9 @@ func Default() (World, Inventory) {
 	gated := map[[2]string]bool{}
 	for _, g := range gates {
 		gated[pair(g.from, g.to)] = true
-		w.Edges = append(w.Edges, Edge{From: g.from, To: g.to, Need: need(g.req)})
+		w.Edges = append(w.Edges, Edge{From: g.from, To: g.to, Need: g.need})
 		if !g.oneWay {
-			w.Edges = append(w.Edges, Edge{From: g.to, To: g.from, Need: need(g.req)})
+			w.Edges = append(w.Edges, Edge{From: g.to, To: g.from, Need: g.need})
 		}
 	}
 
@@ -39,15 +38,14 @@ func Default() (World, Inventory) {
 		}
 	}
 
-	// A Skip slot never spawns, so counting its item would hand out something
-	// that can never be picked up.
+	// A Skip slot never spawns or is not understood yet, so don't rando
 	for _, p := range placements {
 		if p.fill == Skip {
 			continue
 		}
 		w.Checks = append(w.Checks, Check{
 			Region: p.region, Slot: p.slot, Index: p.index,
-			Item: p.item, Need: need(p.req), Fill: p.fill, Dupe: p.dupe,
+			Item: p.item, Need: p.need, Fill: p.fill, Dupe: p.dupe,
 			Also: errands[Where{Map: p.region, Slot: p.slot, Index: p.index}],
 		})
 	}
@@ -57,12 +55,6 @@ func Default() (World, Inventory) {
 		inv[id]++
 	}
 	return w, inv
-}
-
-// need looks up a requirement string. Capitalisation varies between rows, and
-// anything with no entry at all is treated as free.
-func need(req string) Req {
-	return requirements[strings.ToLower(strings.TrimSpace(req))]
 }
 
 // ForgeBossSlot is the entity index in 019 the randomizer copies 018's boss
@@ -82,17 +74,38 @@ func Randomized() (World, Inventory) {
 	return w, start
 }
 
-// ForSeed is the world a fill solves against. Kept drops leave the forge boss
-// in 018 and pin every drop, along with any slot sharing its pickup.
-func ForSeed(drops bool) (World, Inventory) {
-	if drops {
-		return Randomized()
+// Pool says which kinds of slot the randomizer shuffles.
+type Pool struct {
+	Ground, Containers, Drops, Idol, Shops bool
+}
+
+// Has reports whether slots of this kind are shuffled.
+func (p Pool) Has(s Slot) bool {
+	switch s {
+	case Ground:
+		return p.Ground
+	case Container:
+		return p.Containers
+	case Start:
+		return p.Idol
+	case Shop:
+		return p.Shops
 	}
+	return p.Drops
+}
+
+// ForSeed is the world a fill solves against. Kinds left out of the pool keep
+// their items, along with any slot sharing a pickup with them, and kept drops
+// leave the forge boss in 018.
+func ForSeed(pool Pool) (World, Inventory) {
 	w, start := Default()
+	if pool.Drops {
+		w, start = Randomized()
+	}
 	shared := map[string]bool{}
 	for i := range w.Checks {
 		c := &w.Checks[i]
-		if (c.Slot == MapDrop || c.Slot == PrmDrop) && c.Fill == Shuffle {
+		if !pool.Has(c.Slot) && c.Fill == Shuffle {
 			c.Fill = Fixed
 			if c.Dupe != "" {
 				shared[c.Dupe] = true
@@ -104,7 +117,82 @@ func ForSeed(drops bool) (World, Inventory) {
 			c.Fill = Fixed
 		}
 	}
+
+	if pool.Shops {
+		w.Checks = append(w.Checks, shopChecks()...)
+	}
+	// randomize idol
+	if pool.Idol && start[IdolOfSorrow] > 0 {
+		delete(start, IdolOfSorrow)
+		w.Checks = append(w.Checks, Check{Region: w.Start, Slot: Start, Item: IdolOfSorrow, Fill: Shuffle})
+	}
 	return w, start
+}
+
+// shopChecks gives each shop a share of the distinct items the shops sell,
+// sized like its vanilla stock. The Caretaker's Map is a copy of the one found
+// in 2A, so its slot takes filler only.
+func shopChecks() []Check {
+	var items []uint16
+	seen := map[uint16]bool{}
+	counts := make([]int, len(shops))
+	for s, sh := range shops {
+		counts[s] = len(sh.items)
+		for _, id := range sh.items {
+			if !seen[id] {
+				seen[id] = true
+				items = append(items, id)
+			}
+		}
+	}
+	var out []Check
+	next := 0
+	for s, n := range share(counts, len(items)) {
+		sh := shops[s]
+		for k := range n {
+			c := Check{Region: sh.region, Slot: Shop, Index: s*100 + k, Item: items[next],
+				Need: sh.need, Fill: Shuffle, Also: sh.also, Lock: sh.lock}
+			if c.Item == CaretakersMap {
+				c.Item, c.Fill = Herb, Filler
+			}
+			out = append(out, c)
+			next++
+		}
+	}
+	return out
+}
+
+// ShopNumber is the gold shop a Shop check belongs to.
+func ShopNumber(c Check) int { return c.Index / 100 }
+
+// share splits n over counts proportionally, leftovers to the largest
+// remainders.
+func share(counts []int, n int) []int {
+	total := 0
+	for _, c := range counts {
+		total += c
+	}
+	sizes := make([]int, len(counts))
+	if total == 0 {
+		return sizes
+	}
+	left := n
+	rest := make([]int, len(counts))
+	for i, c := range counts {
+		sizes[i], rest[i] = c*n/total, c*n%total
+		left -= sizes[i]
+	}
+	for ; left > 0; left-- {
+		best := 0
+		for i := range rest {
+			if rest[i] > rest[best] {
+				best = i
+			}
+		}
+		sizes[best]++
+		rest[best] = -1
+	}
+	return sizes
 }
 
 // Rule constrains what may be placed in one slot.

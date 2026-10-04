@@ -6,6 +6,7 @@ import (
 
 	"kf4randomizer/internal/features/randomize"
 	"kf4randomizer/internal/kfmap"
+	"kf4randomizer/internal/logic"
 )
 
 func TestSpoilerGroupsByMapThenKind(t *testing.T) {
@@ -43,7 +44,7 @@ func TestSpoilerGroupsByMapThenKind(t *testing.T) {
 }
 
 func TestSpheresReportsTheVanillaGame(t *testing.T) {
-	got := Spheres(nil, true, kfmap.ItemNames{49: "RUSTY KEY"}, kfmap.MapNames{"002.map": "Village Ruins"})
+	got := Spheres(nil, logic.Pool{}, kfmap.ItemNames{49: "RUSTY KEY"}, kfmap.MapNames{"002.map": "Village Ruins"})
 
 	if !strings.Contains(got, "=== SPHERE 0:") {
 		t.Fatalf("no spheres in the report:\n%s", got)

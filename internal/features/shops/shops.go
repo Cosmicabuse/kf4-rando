@@ -122,6 +122,24 @@ func shareOut(counts []int, n int) []int {
 	return sizes
 }
 
+// Clear empties the gold shops for a new stock.
+func Clear(stock []byte) {
+	for shop := range kfconst.ShopGoldCount {
+		clear(stock[shop*kfconst.ShopStockSize : (shop+1)*kfconst.ShopStockSize])
+	}
+}
+
+// Add puts one more of id in a gold shop, or makes it unlimited if common.
+func Add(stock []byte, shop int, id uint16) {
+	i := shop*kfconst.ShopStockSize + int(id)
+	switch {
+	case common(int(id)):
+		stock[i] = unlimited
+	case stock[i] < unlimited-1:
+		stock[i]++
+	}
+}
+
 // AddAmmo stocks every gold shop with all three ammo types, unlimited.
 func AddAmmo(stock, prices []byte) error {
 	if err := check(stock, prices); err != nil {

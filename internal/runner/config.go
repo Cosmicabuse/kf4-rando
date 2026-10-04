@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"kf4randomizer/internal/features/mods"
+	"kf4randomizer/internal/logic"
 )
 
 type Config struct {
@@ -48,25 +49,17 @@ type Config struct {
 	// every map.
 	RemoveEmptyContainers bool `yaml:"remove_empty_containers"`
 
-	// SharedItemModel repoints every map's first item model/texture pair
-	// to one embedded model, so pickups look identical everywhere. Needs
-	// the whitelist patch, which the randomizer always applies.
-	SharedItemModel bool `yaml:"shared_item_model"`
-
-	// SharedItemModelScale multiplies the shared model's size. 1 (or 0,
-	// meaning unset) leaves it as authored.
-	SharedItemModelScale float64 `yaml:"shared_item_model_scale"`
-
 	// SharedItemModelColor flattens the shared model to one colour, as
 	// "#rrggbb". Empty keeps the borrowed texture as-is.
 	SharedItemModelColor string `yaml:"shared_item_model_color"`
 
-	// RandomizeContainerItems folds container contents into the
-	// ground-item shuffle pool.
-	RandomizeContainerItems bool `yaml:"randomize_container_items"`
+	// The randomize_* pool switches are on unless set to false.
+	RandomizeGroundItems    *bool `yaml:"randomize_ground_items"`
+	RandomizeContainerItems *bool `yaml:"randomize_container_items"`
+	RandomizeMonsterDrops   *bool `yaml:"randomize_monster_drops"`
+	RandomizeIdolOfSorrow   *bool `yaml:"randomize_idol_of_sorrow"`
 
-	// LogicFill makes every seed finishable. It shuffles containers too, so
-	// RandomizeContainerItems doesn't apply. On unless set to false.
+	// LogicFill makes every seed finishable. On unless set to false.
 	LogicFill *bool `yaml:"logic_fill"`
 
 	// PickupPopupShowItemIndex appends " (#N)" to the pickup popup, N
@@ -76,15 +69,19 @@ type Config struct {
 	// FullDebugMode adds the L3+R3 menu: item HUD, map warp, levitate.
 	FullDebugMode bool `yaml:"full_debug_mode"`
 
+	// WandsAnywhere lets a wand warp without standing on a teleport pad.
+	WandsAnywhere bool `yaml:"wands_anywhere"`
+
 	// DisableRandomizer keeps ground items and containers
 	// at vanilla placement regardless of the other randomize flags. QoL
 	// settings (mods, RemoveEmptyContainers, starting_config,
 	// EnableParamdomizer, ...) are unaffected.
 	DisableRandomizer bool `yaml:"disable_randomizer"`
 
-	// RandomizeMonsterDrops shuffles the drops set on placed monsters. Omit it
-	// to leave it on.
-	RandomizeMonsterDrops *bool `yaml:"randomize_monster_drops"`
+	// GoldMultiplier and ExpMultiplier scale what monsters give. 0 or 1 leaves
+	// it vanilla.
+	GoldMultiplier float64 `yaml:"gold_multiplier"`
+	ExpMultiplier  float64 `yaml:"exp_multiplier"`
 
 	// RandomizeShops moves what the four gold shops sell between them.
 	RandomizeShops bool `yaml:"randomize_shops"`
@@ -154,10 +151,17 @@ func RandomSeed() (uint64, error) {
 	return binary.LittleEndian.Uint64(buf[:]), nil
 }
 
-// UseMonsterDrops reports whether monster drops are shuffled. Leaving the key
-// out of the config means yes.
-func (c *Config) UseMonsterDrops() bool {
-	return c.RandomizeMonsterDrops == nil || *c.RandomizeMonsterDrops
+// Pool lists which item categories get randomized. A randomize_* setting
+// missing from config.yaml counts as on, except shops.
+func (c *Config) Pool() logic.Pool {
+	on := func(b *bool) bool { return b == nil || *b }
+	return logic.Pool{
+		Ground:     on(c.RandomizeGroundItems),
+		Containers: on(c.RandomizeContainerItems),
+		Drops:      on(c.RandomizeMonsterDrops),
+		Idol:       on(c.RandomizeIdolOfSorrow),
+		Shops:      c.RandomizeShops && c.UseLogicFill(),
+	}
 }
 
 // UseLogicFill reports whether to place items by reachability. Leaving the

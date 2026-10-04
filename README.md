@@ -20,8 +20,11 @@ Randomized items are split in categories :
 - containers (chest, barrel, crate, pots)
 - guaranteed monster drops (optional)
 - inventory's idol of sorrow
+- shop items
 
-Random monster drops are left as-is, maybe later. The Fire Lord's Fire Mail is the exception, it counts as a guaranteed drop.
+Random monster drops are left as-is, maybe later.
+
+The Guiding stones are NOT randomized yet. Green and blue stones are already placed, and using a green wand is expected in logic.
 
 ## Logic / Spheres
 
@@ -36,12 +39,10 @@ Random monster drops are left as-is, maybe later. The Fire Lord's Fire Mail is t
 - **Black Eyes**
   - I decided for now to not randomize them (they're in the 4 chests in the Holy Forest, as usual). It makes more sense to find randomized keys to unlock those, in my opinion. Maybe a setting later.
 
-- **Sphere requirements**
-  - Without randomizing, the usual progression I've noted for now in the logic is :
-    - maps 0, 2, 4, 8, 9, 29, 96, 98, 99 require nothing (the well is considered free, you need 130+ HP to survive the fall which is hard to modelize in logic)
-    - maps 5, 11, 12, 95, 97 require Fire Crystal - Map 2A requires Rusty Key (house in map 2)
-    - maps 6, 7, 13-15, 16B
+- **Binding Crown**
 
+The first crown found usually in vanilla is not randomized, since you're expected to grab it and run, and logic around this is annoying (kill golem with projectile or specific conditions to grab those 2 items)
+The pedestals randomized are
 ## Things to know in randomizer
 
 - **Model swapping**

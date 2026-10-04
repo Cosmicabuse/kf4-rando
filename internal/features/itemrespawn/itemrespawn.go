@@ -6,7 +6,9 @@
 package itemrespawn
 
 import (
+	"encoding/binary"
 	"fmt"
+	"math"
 	"sort"
 
 	"kf4randomizer/internal/kfmap"
@@ -39,4 +41,33 @@ func Normalize(maps []*kfmap.Map) Result {
 	}
 
 	return Result{TotalMaps: len(maps), TotalItems: total, EventPlaced: eventPlaced}
+}
+
+// Ground items sitting where they can't be picked up, moved to a spot nearby.
+var stuck = []struct {
+	mapName string
+	index   int
+	x, z    float32
+}{
+	{"015.map", 15, 1821, -8501}, // Gauntlets, wedged behind a crate
+}
+
+// MoveStuck moves the ground items in stuck to where they can be reached.
+func MoveStuck(maps []*kfmap.Map) int {
+	moved := 0
+	for _, m := range maps {
+		for _, s := range stuck {
+			if m.Name != s.mapName {
+				continue
+			}
+			for _, it := range m.Items {
+				if it.Index == s.index {
+					binary.LittleEndian.PutUint32(m.Buf[it.Offset:], math.Float32bits(s.x))
+					binary.LittleEndian.PutUint32(m.Buf[it.Offset+8:], math.Float32bits(s.z))
+					moved++
+				}
+			}
+		}
+	}
+	return moved
 }

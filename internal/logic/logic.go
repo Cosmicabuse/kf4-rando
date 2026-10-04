@@ -28,6 +28,28 @@ type Req struct {
 
 func (r Req) empty() bool { return len(r.Items) == 0 && len(r.Caps) == 0 }
 
+// has asks for one of each item. List an item twice to ask for two.
+func has(items ...uint16) Req {
+	r := Req{Items: map[uint16]int{}}
+	for _, id := range items {
+		r.Items[id]++
+	}
+	return r
+}
+
+func can(caps ...Cap) Req { return Req{Caps: caps} }
+
+func (r Req) and(o Req) Req {
+	out := Req{Items: map[uint16]int{}, Caps: append(append([]Cap(nil), r.Caps...), o.Caps...)}
+	for id, n := range r.Items {
+		out.Items[id] += n
+	}
+	for id, n := range o.Items {
+		out.Items[id] += n
+	}
+	return out
+}
+
 // Inventory counts items held.
 type Inventory map[uint16]int
 
@@ -100,6 +122,10 @@ const (
 	// A PrmDrop comes off the monster type in chr.prm, not off a map
 	// slot, so Index is a monster classID.
 	PrmDrop
+	// Start is the starting inventory, where the Idol of Sorrow sits.
+	Start
+	// Shop slots: Index is shop*100 plus the slot within that shop.
+	Shop
 )
 
 func (s Slot) String() string {
@@ -112,6 +138,10 @@ func (s Slot) String() string {
 		return "monster map drop"
 	case PrmDrop:
 		return "monster prm drop"
+	case Start:
+		return "starting inventory"
+	case Shop:
+		return "shop"
 	}
 	return fmt.Sprintf("slot%d", int(s))
 }
@@ -124,6 +154,7 @@ const (
 	Fixed        // real, but keeps its vanilla item
 	Skip         // the game never puts anything here
 	Copy         // shows its twin's item, out of reach from this side
+	Filler       // shuffled, but never handed a progression item
 )
 
 // Check is one item placement. Region plus Slot plus Index identifies it.
@@ -140,6 +171,8 @@ type Check struct {
 	// Another place that has to be reachable too, for an errand whose
 	// ingredient is elsewhere.
 	Also string
+	// Lock pays into another map's lock, for an NPC who moved.
+	Lock string
 }
 
 func (c Check) within(reached map[string]bool) bool {
@@ -177,6 +210,39 @@ type Result struct {
 	Stranded []string
 }
 
+// Keystones, release rocks, rocks of life and strange eggs get used up. A lock costs its count once, shared
+// by everything behind it, and only counts as open when what is held covers
+// every lock in reach, whatever order they get opened in.
+var consumable = map[uint16]bool{Keystone: true, ReleaseRock: true, RockOfLife: true, StrangeEgg: true}
+
+// lockKey names the lock a requirement pays into, "" when nothing is used up.
+// Checks in one map behind the same cost share a lock.
+func lockKey(site string, r Req) (key string, item uint16, cost int) {
+	for id, n := range r.Items {
+		if consumable[id] {
+			return fmt.Sprintf("%s/%d/%d", site, id, n), id, n
+		}
+	}
+	return "", 0, 0
+}
+
+// A two-way gate is one door, so both directions share its lock.
+func edgeLock(e Edge) (string, uint16, int) {
+	a, b := e.From, e.To
+	if a > b {
+		a, b = b, a
+	}
+	return lockKey(a+"|"+b, e.Need)
+}
+
+func checkLock(c Check) (string, uint16, int) {
+	if c.Lock != "" {
+		return lockKey(c.Lock, c.Need)
+	}
+	n, _ := splitRegion(c.Region)
+	return lockKey(fmt.Sprint(n), c.Need)
+}
+
 // reach walks the region graph with inv in hand.
 func (w World) reach(inv Inventory) map[string]bool {
 	return w.reachSkipping(inv, nil)
@@ -185,6 +251,61 @@ func (w World) reach(inv Inventory) map[string]bool {
 // reachSkipping is reach with some edges pulled out, keyed by index, to tell
 // a real gate from one there is a way around.
 func (w World) reachSkipping(inv Inventory, skip map[int]bool) map[string]bool {
+	reached, _ := w.walk(inv, skip)
+	return reached
+}
+
+// walk returns the regions in reach and the locks that can be paid for. An
+// item whose locks in reach cost more than is held opens none of them, and
+// stays that way so the walk can't flip back and forth.
+func (w World) walk(inv Inventory, skip map[int]bool) (map[string]bool, map[string]bool) {
+	open := map[string]bool{}
+	short := map[uint16]bool{}
+	for {
+		reached := w.flood(inv, skip, open)
+		costs := map[string]int{}
+		items := map[string]uint16{}
+		note := func(key string, item uint16, cost int) {
+			if key != "" {
+				costs[key], items[key] = cost, item
+			}
+		}
+		for i, e := range w.Edges {
+			if !skip[i] && reached[e.From] && e.Need.Met(inv, w.Caps) {
+				note(edgeLock(e))
+			}
+		}
+		for _, c := range w.Checks {
+			if c.Fill != Copy && c.within(reached) && c.Need.Met(inv, w.Caps) {
+				note(checkLock(c))
+			}
+		}
+		total := map[uint16]int{}
+		for key, cost := range costs {
+			total[items[key]] += cost
+		}
+		next := map[string]bool{}
+		for key, item := range items {
+			if inv[item] < total[item] {
+				short[item] = true
+			}
+			if !short[item] {
+				next[key] = true
+			}
+		}
+		same := len(next) == len(open)
+		for key := range next {
+			same = same && open[key]
+		}
+		if same {
+			return reached, open
+		}
+		open = next
+	}
+}
+
+// flood is the plain graph walk, with consumable gates passable only when open.
+func (w World) flood(inv Inventory, skip map[int]bool, open map[string]bool) map[string]bool {
 	out := map[string]bool{w.Start: true}
 	for grew := true; grew; {
 		grew = false
@@ -192,11 +313,23 @@ func (w World) reachSkipping(inv Inventory, skip map[int]bool) map[string]bool {
 			if skip[i] || !out[e.From] || out[e.To] || !e.Need.Met(inv, w.Caps) {
 				continue
 			}
+			if key, _, _ := edgeLock(e); key != "" && !open[key] {
+				continue
+			}
 			out[e.To] = true
 			grew = true
 		}
 	}
 	return out
+}
+
+// takeable reports whether c can be picked up given what walk returned.
+func (w World) takeable(c Check, inv Inventory, reached, open map[string]bool) bool {
+	if !c.within(reached) || !c.Need.Met(inv, w.Caps) {
+		return false
+	}
+	key, _, _ := checkLock(c)
+	return key == "" || open[key]
 }
 
 // opened lists the gates that made this round's new regions reachable. A
@@ -272,11 +405,11 @@ func (w World) Solve(start Inventory) Result {
 	var before map[string]bool
 	taken := make(map[int]bool, len(w.Checks))
 	for {
-		reached := w.reach(inv)
+		reached, open := w.walk(inv, nil)
 
 		var got []Check
 		for i, c := range w.Checks {
-			if taken[i] || c.Fill == Copy || !c.within(reached) || !c.Need.Met(inv, w.Caps) {
+			if taken[i] || c.Fill == Copy || !w.takeable(c, inv, reached, open) {
 				continue
 			}
 			taken[i] = true

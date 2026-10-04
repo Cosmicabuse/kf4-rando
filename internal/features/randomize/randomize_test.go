@@ -9,6 +9,7 @@ import (
 
 	"kf4randomizer/internal/kfconst"
 	"kf4randomizer/internal/kfmap"
+	"kf4randomizer/internal/logic"
 )
 
 func newTestRNG(seed uint64) *rand.Rand {
@@ -48,7 +49,7 @@ func classIDMultiset(ids []uint16) map[uint16]int {
 
 func TestRunNoLogic_EligibilityFiltering(t *testing.T) {
 	m := newTestMap("900.map", []uint16{0, 9999, 10, 20}, nil) // 0=empty, 9999=out of range, 10/20=valid
-	result := RunNoLogic([]*kfmap.Map{m}, newTestRNG(1), false, true)
+	result := RunNoLogic([]*kfmap.Map{m}, newTestRNG(1), logic.Pool{Ground: true, Containers: false, Drops: true})
 
 	if result.EligibleSlots != 2 {
 		t.Fatalf("EligibleSlots = %d, want 2 (only classID 10 and 20 are eligible)", result.EligibleSlots)
@@ -70,7 +71,7 @@ func TestRunNoLogic_ContainersOnlyIncludedWhenRequested(t *testing.T) {
 	newMap := func() *kfmap.Map { return newTestMap("900.map", []uint16{10, 20}, []uint16{99}) }
 
 	excluded := newMap()
-	result := RunNoLogic([]*kfmap.Map{excluded}, newTestRNG(1), false, true)
+	result := RunNoLogic([]*kfmap.Map{excluded}, newTestRNG(1), logic.Pool{Ground: true, Containers: false, Drops: true})
 	if result.EligibleSlots != 2 {
 		t.Fatalf("includeContainers=false: EligibleSlots = %d, want 2", result.EligibleSlots)
 	}
@@ -79,7 +80,7 @@ func TestRunNoLogic_ContainersOnlyIncludedWhenRequested(t *testing.T) {
 	}
 
 	included := newMap()
-	result = RunNoLogic([]*kfmap.Map{included}, newTestRNG(1), true, true)
+	result = RunNoLogic([]*kfmap.Map{included}, newTestRNG(1), logic.Pool{Ground: true, Containers: true, Drops: true})
 	if result.EligibleSlots != 3 {
 		t.Fatalf("includeContainers=true: EligibleSlots = %d, want 3", result.EligibleSlots)
 	}
@@ -109,7 +110,7 @@ func TestRunNoLogic_ContainersOnlyIncludedWhenRequested(t *testing.T) {
 func TestRunNoLogic_NoOpSlotsAreNotReportedAsChanges(t *testing.T) {
 	// A single-element pool always shuffles to itself.
 	m := newTestMap("900.map", []uint16{10}, nil)
-	result := RunNoLogic([]*kfmap.Map{m}, newTestRNG(1), false, true)
+	result := RunNoLogic([]*kfmap.Map{m}, newTestRNG(1), logic.Pool{Ground: true, Containers: false, Drops: true})
 
 	if result.EligibleSlots != 1 {
 		t.Fatalf("EligibleSlots = %d, want 1", result.EligibleSlots)
@@ -129,7 +130,7 @@ func TestRunNoLogic_ExcludedClassIDsNeverMove(t *testing.T) {
 	// 196 = Moonlight Sword, kfconst.ExcludedFromRandomizationClassIDs.
 	for seed := uint64(0); seed < 20; seed++ {
 		m := newTestMap("901.map", []uint16{196, 10, 20, 30}, []uint16{196, 40})
-		result := RunNoLogic([]*kfmap.Map{m}, newTestRNG(seed), true, true)
+		result := RunNoLogic([]*kfmap.Map{m}, newTestRNG(seed), logic.Pool{Ground: true, Containers: true, Drops: true})
 
 		if result.EligibleSlots != 4 {
 			t.Fatalf("seed %d: EligibleSlots = %d, want 4 (both classID-196 slots excluded)", seed, result.EligibleSlots)
@@ -162,10 +163,10 @@ func TestRunNoLogic_SameSeedIsDeterministic(t *testing.T) {
 	}
 
 	m1 := build()
-	r1 := RunNoLogic([]*kfmap.Map{m1}, newTestRNG(42), false, true)
+	r1 := RunNoLogic([]*kfmap.Map{m1}, newTestRNG(42), logic.Pool{Ground: true, Containers: false, Drops: true})
 
 	m2 := build()
-	r2 := RunNoLogic([]*kfmap.Map{m2}, newTestRNG(42), false, true)
+	r2 := RunNoLogic([]*kfmap.Map{m2}, newTestRNG(42), logic.Pool{Ground: true, Containers: false, Drops: true})
 
 	if len(r1.Changes) != len(r2.Changes) {
 		t.Fatalf("got %d and %d changes for the same seed", len(r1.Changes), len(r2.Changes))
@@ -206,7 +207,7 @@ func TestRunNoLogic_CreatureDropsAlwaysShuffled(t *testing.T) {
 	m := newTestMapWithCreatures("900.map", []uint16{10, 20}, []uint16{30, 40})
 
 	// includeContainers is false: drops must still be in the pool.
-	result := RunNoLogic([]*kfmap.Map{m}, newTestRNG(7), false, true)
+	result := RunNoLogic([]*kfmap.Map{m}, newTestRNG(7), logic.Pool{Ground: true, Containers: false, Drops: true})
 
 	if result.EligibleSlots != 4 {
 		t.Fatalf("EligibleSlots = %d, want 4 (2 ground items + 2 creature drops)", result.EligibleSlots)
@@ -225,7 +226,7 @@ func TestRunNoLogic_CreatureDropsAlwaysShuffled(t *testing.T) {
 func TestRunNoLogic_CreatureDropExclusions(t *testing.T) {
 	// 9999 is outside item_nam.prm, 196 is on the exclusion list.
 	m := newTestMapWithCreatures("900.map", nil, []uint16{9999, 196, 30})
-	result := RunNoLogic([]*kfmap.Map{m}, newTestRNG(1), false, true)
+	result := RunNoLogic([]*kfmap.Map{m}, newTestRNG(1), logic.Pool{Ground: true, Containers: false, Drops: true})
 
 	if result.EligibleSlots != 1 {
 		t.Fatalf("EligibleSlots = %d, want 1 (only classID 30 is eligible)", result.EligibleSlots)
@@ -254,7 +255,7 @@ func TestRunNoLogic_SkipsSlotsNothingCanEverSpawn(t *testing.T) {
 	// Three real slots are like this: a Binding Crown under map 015's floor,
 	// a Widda Key in 023, a Long Bow in 031.
 	dead := newSlotMap("015.map", 10, 0, 0)
-	if got := RunNoLogic([]*kfmap.Map{dead}, newTestRNG(1), false, true).EligibleSlots; got != 0 {
+	if got := RunNoLogic([]*kfmap.Map{dead}, newTestRNG(1), logic.Pool{Ground: true, Containers: false, Drops: true}).EligibleSlots; got != 0 {
 		t.Errorf("EligibleSlots = %d, want 0; an item put here would be lost", got)
 	}
 	if dead.Items[0].ClassID != 10 {
@@ -271,7 +272,7 @@ func TestRunNoLogic_KeepsEventRevealedAndNaturalSlots(t *testing.T) {
 		{"revealed by an event", 0, 201},
 	} {
 		m := newSlotMap("900.map", 10, c.respawn, c.event)
-		if got := RunNoLogic([]*kfmap.Map{m}, newTestRNG(1), false, true).EligibleSlots; got != 1 {
+		if got := RunNoLogic([]*kfmap.Map{m}, newTestRNG(1), logic.Pool{Ground: true, Containers: false, Drops: true}).EligibleSlots; got != 1 {
 			t.Errorf("%s: EligibleSlots = %d, want 1", c.name, got)
 		}
 	}
@@ -318,7 +319,7 @@ func TestRunNoLogicSkipsSlotsTheTablesRuleOut(t *testing.T) {
 	// half of the Rusty Key group. Neither may take a shuffled item on its own.
 	m := newTestMap("000.map", []uint16{10, 20, 30, 40, 50, 60, 70, 80}, nil)
 	before := m.Items[3].ClassID
-	RunNoLogic([]*kfmap.Map{m}, newTestRNG(1), false, true)
+	RunNoLogic([]*kfmap.Map{m}, newTestRNG(1), logic.Pool{Ground: true, Containers: false, Drops: true})
 
 	if m.Items[3].ClassID != before {
 		t.Errorf("slot 3 should never be written to, changed from %d to %d", before, m.Items[3].ClassID)
@@ -330,7 +331,7 @@ func TestRunNoLogicGivesSharedSlotsOneItem(t *testing.T) {
 	// same Crusader Gloves pickup, so both have to end up holding one item.
 	a := newTestMap("017.map", []uint16{10, 20, 30, 40, 50, 60, 70, 80}, nil)
 	b := newTestMap("018.map", []uint16{10, 20, 30, 40, 50, 60, 70, 80}, nil)
-	RunNoLogic([]*kfmap.Map{a, b}, newTestRNG(3), false, true)
+	RunNoLogic([]*kfmap.Map{a, b}, newTestRNG(3), logic.Pool{Ground: true, Containers: false, Drops: true})
 
 	if a.Items[0].ClassID != b.Items[1].ClassID {
 		t.Errorf("017 slot 0 = %d but 018 slot 1 = %d, want the same item",

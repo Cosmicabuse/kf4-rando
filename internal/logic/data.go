@@ -5,6 +5,7 @@ const (
 	AltarKey       uint16 = 105
 	AncientKey     uint16 = 53
 	BindingCrown   uint16 = 107
+	CaretakersMap  uint16 = 1
 	BlackEye       uint16 = 130
 	CraftsmansKey  uint16 = 57
 	CrystalVial    uint16 = 14
@@ -13,6 +14,7 @@ const (
 	ExpeditionsKey uint16 = 48
 	ForestDew      uint16 = 120
 	GreenWand      uint16 = 140
+	Herb           uint16 = 6
 	IconOfIce      uint16 = 101
 	IconOfWater    uint16 = 103
 	IdolOfSorrow   uint16 = 149
@@ -31,57 +33,10 @@ const (
 	WiddaKey       uint16 = 52
 	WiddasBracelet uint16 = 362
 	WiddasNecklace uint16 = 372
+	WaterTalisman  uint16 = 374
 	WiddasRing     uint16 = 353
 	ZastarisKey    uint16 = 47
 )
-
-// What each requirement asks for, keyed lowercase (see need). Anything not
-// listed here is free.
-var requirements = map[string]Req{
-	"2x binding crown":                  {Items: map[uint16]int{BindingCrown: 2}},
-	"2x release rock":                   {Items: map[uint16]int{ReleaseRock: 2}},
-	"2x release rock, 2x binding crown": {Items: map[uint16]int{ReleaseRock: 2, BindingCrown: 2}},
-	"3x release rock":                   {Items: map[uint16]int{ReleaseRock: 3}},
-	"altar key":                         {Items: map[uint16]int{AltarKey: 1}},
-	"ancient key":                       {Items: map[uint16]int{AncientKey: 1}},
-	"ancient key, serrak's key":         {Items: map[uint16]int{AncientKey: 1, SerraksKey: 1}},
-	"binding crown":                     {Items: map[uint16]int{BindingCrown: 1}},
-	"black eye x4":                      {Items: map[uint16]int{BlackEye: 4}},
-	"black eye x4, lawful blade":        {Items: map[uint16]int{BlackEye: 4, LawfulBlade: 1}},
-	"craftsman's key":                   {Items: map[uint16]int{CraftsmansKey: 1}},
-	"crystal vial":                      {Items: map[uint16]int{CrystalVial: 1}},
-	"earth folk's key":                  {Items: map[uint16]int{EarthFolksKey: 1}},
-	"earth folk's key ?":                {Items: map[uint16]int{EarthFolksKey: 1}},
-	"engineer's key":                    {Items: map[uint16]int{EngineersKey: 1}},
-	"expedition key":                    {Items: map[uint16]int{ExpeditionsKey: 1}},
-	"fire spell":                        {Caps: []Cap{CapFire}},
-	"fireball used in map097":           {Caps: []Cap{CapFire}},
-	"forest dew":                        {Items: map[uint16]int{ForestDew: 1}},
-	"green wand":                        {Items: map[uint16]int{GreenWand: 1}},
-	"icon of ice":                       {Items: map[uint16]int{IconOfIce: 1}},
-	"icon of water":                     {Items: map[uint16]int{IconOfWater: 1}},
-	"idol of sorrow":                    {Items: map[uint16]int{IdolOfSorrow: 1}},
-	"jail key":                          {Items: map[uint16]int{JailKey: 1}},
-	"keystone":                          {Items: map[uint16]int{Keystone: 1}},
-	"king's key":                        {Items: map[uint16]int{KingsKey: 1}},
-	"moonlight sword":                   {Items: map[uint16]int{MoonlightSword: 1}},
-	"priest's key":                      {Items: map[uint16]int{PriestsKey: 1}},
-	"projectile":                        {Caps: []Cap{CapProjectile}},
-	"projectile weapon":                 {Caps: []Cap{CapProjectile}},
-	"release rock":                      {Items: map[uint16]int{ReleaseRock: 1}},
-	"release rock, zastari's key":       {Items: map[uint16]int{ReleaseRock: 1, ZastarisKey: 1}},
-	"ring of wisdom":                    {Items: map[uint16]int{RingOfWisdom: 1}},
-	"rock of life":                      {Items: map[uint16]int{RockOfLife: 1}},
-	"rusty key":                         {Items: map[uint16]int{RustyKey: 1}},
-	"serrak's key":                      {Items: map[uint16]int{SerraksKey: 1}},
-	"strange egg":                       {Items: map[uint16]int{StrangeEgg: 1}},
-	"weapon can break container":        {Caps: []Cap{CapBreak}},
-	"weapon can break container, binding crown": {Items: map[uint16]int{BindingCrown: 1}, Caps: []Cap{CapBreak}},
-	"weapon can break woodplanks":               {},
-	"widda's bracelet, necklace, ring":          {Items: map[uint16]int{WiddasBracelet: 1, WiddasNecklace: 1, WiddasRing: 1}},
-	"widda's key":                               {Items: map[uint16]int{WiddaKey: 1}},
-	"zastari's key":                             {Items: map[uint16]int{ZastarisKey: 1}},
-}
 
 // Every crossing between two maps; true means one-way.
 var crossings = []struct {
@@ -229,84 +184,83 @@ var crossings = []struct {
 // plain entry above for the same pair of maps.
 var gates = []struct {
 	from, to string
-	req      string
+	need     Req
 	oneWay   bool
 }{
-	{"2", "2A", "Rusty Key", false},
-	{"98", "5", "Fire spell", false},
-	{"14", "6", "Forest Dew", false},
-	{"7", "41", "", false},
-	{"6", "7", "", false},
-	{"16", "20", "", false},
-	{"20", "16A", "", false},
-	{"17", "24", "", false},
-	{"19", "16B", "Icon of Ice", false},
-	{"16B", "105", "", false},
-	{"106", "108", "", false},
-	{"108", "107", "", false},
-	{"107", "109", "", false},
-	{"109", "110", "", false},
-	{"110", "111", "", false},
-	{"111", "31", "", false},
-	{"26", "22", "widda's bracelet, necklace, ring", false},
-	{"6A", "42", "Black Eye x4", false},
-	{"6", "30", "Ring of Wisdom", true},
-	{"30", "6A", "", true},
-	{"35", "37", "Icon of Water", false},
-	{"37", "36", "Jail Key", false},
-	{"6A", "6", "King's Key", false},
-	{"6", "6B", "Ring of Wisdom", false},
-	{"12", "15", "Binding Crown", true},
-	{"15", "12", "", true},
-	{"37", "38", "Idol of Sorrow", false},
+	{"2", "2A", has(RustyKey), false},
+	{"98", "5", can(CapFire), false},
+	{"14", "6", has(ForestDew), false},
+	{"7", "41", Req{}, false},
+	{"6", "7", Req{}, false},
+	{"16", "20", Req{}, false},
+	{"20", "16A", Req{}, false},
+	{"17", "24", Req{}, false},
+	{"19", "16B", has(IconOfIce), false},
+	{"16B", "105", Req{}, false},
+	{"106", "108", Req{}, false},
+	{"108", "107", Req{}, false},
+	{"107", "109", Req{}, false},
+	{"109", "110", Req{}, false},
+	{"110", "111", Req{}, false},
+	{"111", "31", Req{}, false},
+	{"26", "22", has(WiddasBracelet, WiddasNecklace, WiddasRing), false},
+	{"6A", "42", has(BlackEye, BlackEye, BlackEye, BlackEye), false},
+	{"6", "30", has(RingOfWisdom), true},
+	{"30", "6A", Req{}, true},
+	{"35", "37", has(IconOfWater), false},
+	{"37", "36", has(JailKey), false},
+	{"6A", "6", has(KingsKey), false},
+	{"6", "6B", has(RingOfWisdom), false},
+	{"12", "15", has(BindingCrown), true},
+	{"15", "12", Req{}, true},
+	{"37", "38", has(IdolOfSorrow), false},
 	// 102A is only reached by warping with the Green Wand, which works from
-	// any teleport pad; 006 stands in for wherever the wand is picked up.
-	{"6", "102A", "Green Wand", true},
-	{"102A", "16", "", false},
-	{"102A", "104", "", false},
-	{"104", "102", "", true},
+	// any teleport pad; 006 stands in for wherever the wand is picked up in vanilla
+	{"6", "102A", has(GreenWand), true},
+	{"102A", "16", Req{}, false},
+	{"102A", "104", Req{}, false},
+	{"104", "102", Req{}, true},
 
-	// One forge in three states. The Fire Lord lights it, the icon freezes it,
-	// and each state is only left by its doors.
-	{"25", "18", "", true},
-	{"18", "19", "Icon of Ice", true},
-	{"18", "16", "", true},
-	{"18", "20", "", true},
-	{"18", "24", "", true},
-	{"19", "20", "", true},
-	{"19", "24", "", true},
+	// One forge in three states. The Fire Genie in 24 lights it, the icon
+	// cools the forge so there's less lava.
+	{"24", "18", Req{}, true},
+	{"18", "19", has(IconOfIce), true},
+	{"18", "16", Req{}, true},
+	{"18", "20", Req{}, true},
+	{"18", "24", Req{}, true},
+	{"19", "20", Req{}, true},
+	{"19", "24", Req{}, true},
 
 	// The central tower's parts only meet through other maps. The bridge and
 	// the doors from the throne and level 2 open from one side only.
-	{"100A", "15", "", false},
-	{"100A", "15A", "", false},
-	{"100A", "15B", "", false},
-	{"100A", "15C", "", false},
-	{"100A", "101A", "", false},
-	{"100A", "101B", "", false},
-	{"100A", "100B", "Keystone", true},
-	{"100B", "102", "", false},
-	{"102", "100C", "Priest's Key", false},
-	{"7", "100B", "", true},
+	{"100A", "15", Req{}, false},
+	{"100A", "15A", Req{}, false},
+	{"100A", "15B", Req{}, false},
+	{"100A", "15C", Req{}, false},
+	{"100A", "101A", Req{}, false},
+	{"100A", "101B", Req{}, false},
+	{"100A", "100B", has(Keystone), true},
+	{"100B", "102", Req{}, false},
+	{"102", "100C", has(PriestsKey), false},
+	{"7", "100B", Req{}, true},
 
 	// 105 loops through a corner of the tower (100D) to a ledge (105A) whose
-	// lever opens back onto 105. The bridge from 100D lowers onto 100B.
-	{"105", "100D", "", false},
-	{"100D", "105A", "", false},
-	{"105A", "105", "", false},
-	{"100D", "100B", "Keystone", true},
-	{"105A", "106", "", false},
+	// lever opens back onto 105. Keystone shortcuts are left out, they only
+	// lead back to places already reached.
+	{"105", "100D", Req{}, false},
+	{"100D", "105A", Req{}, false},
+	{"105A", "105", Req{}, false},
+	{"105A", "106", Req{}, false},
 
-	// Level 2 tower: 107 from 108, 107B from 111, both onto the stairs (107A)
-	// with a keystone.
-	{"107", "107A", "Keystone", false},
-	{"107B", "107A", "Keystone", false},
-	{"107A", "100B", "", true},
-	{"111", "107B", "", false},
-	{"107B", "111A", "", false},
-	{"109", "111", "", true},
-	{"113", "111", "", true},
-	{"115", "107", "", true},
+	// The end of the Egg Mines opens onto 113 with a Strange Egg.
+	{"32", "113", has(StrangeEgg), false},
+
+	// Level 2 tower: 107 from 108, 107B from 111.
+	{"111", "107B", Req{}, false},
+	{"107B", "111A", Req{}, false},
+	{"109", "111", Req{}, true},
+	{"113", "111", Req{}, true},
+	{"115", "107", Req{}, true},
 }
 
 // Checks that also need another place reached, keyed by region rather than
@@ -315,6 +269,24 @@ var errands = map[Where]string{
 	// The Seabed Cave trade wants a vial of poison water from the Icon of
 	// Healing.
 	{Map: "28", Slot: Ground, Index: 0}: "97",
+}
+
+// The gold shops: where each shopkeeper sells, what he needs, and his vanilla
+// stock without ammo, which every shop always sells.
+var shops = []struct {
+	region string
+	need   Req
+	also   string
+	lock   string
+	items  []uint16
+}{
+	{"96", Req{}, "", "", []uint16{1, 6, 9, 12, 156, 200, 224, 254, 277, 333}},
+	// gives the Bow once the room is cleared, then sells
+	{"15C", Req{}, "", "", []uint16{6, 7, 9, 10, 12, 158, 161, 178, 198, 201, 202, 258, 310}},
+	// moves from 98 to the 7 <-> 100B shortcut once given a Rock of Life
+	// TODO: check that connection in game
+	{"7", has(RockOfLife), "98", "98", []uint16{6, 7, 9, 10, 12, 166, 173, 204, 230, 260, 303, 338}},
+	{"109", Req{}, "", "", []uint16{6, 7, 9, 10, 11, 12, 13, 14, 21, 22, 34, 142, 206, 211, 255, 262, 279, 281, 288, 306, 337, 340}},
 }
 
 // A new game starts here.

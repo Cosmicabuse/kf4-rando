@@ -37,7 +37,7 @@ func main() {
 	registerHandlers(mux)
 
 	fmt.Printf("KF4 Randomizer GUI running at %s\n", url)
-	fmt.Println("(Leave this window open while using the GUI. Closing it stomps the server uwu.)")
+	fmt.Println("(Leave this window open while using the GUI. Closing it stomps the server.)")
 
 	if !*noBrowser {
 		if err := openBrowser(url); err != nil {

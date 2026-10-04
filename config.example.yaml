@@ -4,7 +4,6 @@ input: "C:\\path\\to\\King's Field - The Ancient City (USA).iso"
 # Randomized ISO, overwritten if it exists. Not needed with debug_data.
 output: "C:\\path\\to\\KF4_RANDOMIZED.iso"
 
-# Same seed, same game. Remove the line for a random one, it gets printed.
 seed: 12345
 
 # Spoiler log path. Blank means spoiler_<seed>.log next to the output.
@@ -26,7 +25,7 @@ mods:
   - full_analog_clamping: false
 
 # Changes ini/0611.ini, the new game's starting state, by key name. Leave it
-# empty to keep vanilla.
+# empty to keep vanilla. better to edit via GUI
 starting_config: {}
 # starting_config:
 #   gold: 100
@@ -37,38 +36,36 @@ starting_config: {}
 strip_dummy_files: true
 
 # Moves empty barrels/crates/pots out of the maps, so any container you see
-# has something in it.
-remove_empty_containers: true
+# has something in it. Could be bugged
+remove_empty_containers: false
 
-# Puts container items in the same pool as ground items. Only used without
-# logic_fill, which always does it.
+# Wands warp from anywhere, not only from a teleport pad.
+wands_anywhere: true
+
+# What goes into the shuffle.
+randomize_ground_items: true
 randomize_container_items: true
-
-# Shuffles the drops set on placed monsters, and the Fire Lord's Fire Mail.
-# Off keeps every drop where it is, and the forge boss stays in map 18.
-# Defaults to true.
 randomize_monster_drops: true
+randomize_idol_of_sorrow: true
 
-# Moves what the four gold shops sell between them, each charging its own
-# price. Whenever anything is randomized, every gold shop also sells arrows,
-# bolts and Widda's arrows. Defaults to false.
-randomize_shops: true
+# Multiply the gold and experience monsters give. 1 is vanilla.
+gold_multiplier: 1
+exp_multiplier: 1
 
-# Every randomized pickup looks the same, so you can't tell what it is from
-# afar. The Moonlight Sword's map keeps its model, nothing there is shuffled.
-shared_item_model: false
+# Puts the four gold shops in the shuffle, so they can sell anything, key
+# items included. Every gold shop also sells arrows, bolts and Widda's arrows
+# whenever anything is randomized. Defaults to false.
+randomize_shops: false
 
-# Size of that model. 1 is the original size.
-shared_item_model_scale: 2.5
-
-# Colour of that model, "#rrggbb". Blank keeps its texture.
-shared_item_model_color: '#22C8E0'
+# Randomized pickups are all drawn as the same blue gem. Its colour, as
+# "#rrggbb". Blank keeps it blue.
+shared_item_model_color: ''
 
 # Adds the item's slot number to the pickup popup, "Antidote (#4)". Same
 # numbers as the spoiler log.
-pickup_popup_show_item_index: true
+pickup_popup_show_item_index: false
 
-# Makes sure every seed can be finished. Set it to false for a blind shuffle.
+# Makes sure every seed can be finished. Set it to false for no logic shuffle.
 logic_fill: true
 
 # Keeps every item where vanilla put it. Mods, starting_config and the
