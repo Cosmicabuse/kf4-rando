@@ -33,7 +33,7 @@ func main() {
 	flag.Parse()
 	pool := logic.Pool{Ground: *ground, Containers: *containers, Drops: *drops, Idol: *idol, Shops: *shopsOn}
 
-	names := kfmap.LoadClassIDToName(resources.ItemNamPRM)
+	names := kfmap.VanillaItemNames
 	mapNames, err := kfmap.LoadMapNames(resources.MapNamesCSV)
 	if err != nil {
 		fail(err)

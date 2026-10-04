@@ -46,6 +46,7 @@ type gameData struct {
 	mapEntries []isopatch.DatEntry // parallel to maps, same order
 	dat        map[string]isopatch.DatEntry
 	itemNames  kfmap.ItemNames // nil if item_nam.prm wasn't found
+	ini        []byte          // ini/0611.ini as the input disc has it
 	mapNames   kfmap.MapNames
 }
 
@@ -105,6 +106,10 @@ func loadGameData(w io.Writer, f *os.File) (*gameData, error) {
 		_, _ = fmt.Fprintf(w, "!! %v, item names won't be available\n", err)
 	} else {
 		data.itemNames = kfmap.LoadClassIDToName(itemNamBuf)
+	}
+
+	if data.ini, _, err = data.read(f, startingIniDatPath); err != nil {
+		return nil, err
 	}
 
 	data.mapNames, err = kfmap.LoadMapNames(resources.MapNamesCSV)
@@ -187,12 +192,6 @@ func Run(w io.Writer, cfg *Config) error {
 	resolvedMods, err := mods.Resolve(mods.BuiltinCategories, cfg.Mods)
 	if err != nil {
 		return fmt.Errorf("mods selection error: %w", err)
-	}
-
-	// Always vanilla + overrides, never the input ISO's own ini as-is.
-	newStartingIni, err := startingconfig.ApplyOverrides(startingconfig.BaseINI, cfg.StartingConfig)
-	if err != nil {
-		return err
 	}
 
 	if err := validateInput(cfg.Input); err != nil {
@@ -282,6 +281,10 @@ func Run(w io.Writer, cfg *Config) error {
 	}
 	// only when something is overridden, no need to rewrite the ini otherwise
 	if len(cfg.StartingConfig) > 0 {
+		newStartingIni, err := startingconfig.ApplyOverrides(data.ini, cfg.StartingConfig)
+		if err != nil {
+			return err
+		}
 		if err := isopatch.WriteDatMemberResized(f, iniEntry, newStartingIni); err != nil {
 			return fmt.Errorf("applying starting_config to %s: %w", startingIniDatPath, err)
 		}
@@ -519,12 +522,12 @@ func swapStartingIdol(w io.Writer, cfg *Config, f *os.File, data *gameData, give
 		overrides = map[string]int{}
 	}
 	overrides[fmt.Sprintf("item_%03d", logic.IdolOfSorrow)] = 0
-	withUser, err := startingconfig.ApplyOverrides(startingconfig.BaseINI, overrides)
+	withUser, err := startingconfig.ApplyOverrides(data.ini, overrides)
 	if err != nil {
 		return err
 	}
 	overrides[fmt.Sprintf("item_%03d", give)] = min(startingconfig.ItemQuantity(withUser, int(give))+1, 99)
-	ini, err := startingconfig.ApplyOverrides(startingconfig.BaseINI, overrides)
+	ini, err := startingconfig.ApplyOverrides(data.ini, overrides)
 	if err != nil {
 		return err
 	}

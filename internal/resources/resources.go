@@ -4,11 +4,6 @@ package resources
 
 import _ "embed"
 
-// StartingConfigBaseINI is the base ini/0611.ini.
-//
-//go:embed 0611.ini
-var StartingConfigBaseINI []byte
-
 // PickupPopupCode : shows a name popup on ground-item pickup.
 //
 //go:embed pickup_popup_code.bin
@@ -35,12 +30,6 @@ var DebugHUDPayload []byte
 //
 //go:embed levitate_stub.bin
 var LevitateStub []byte
-
-// ItemNamPRM is a static copy of param/item_nam.prm (classID -> item
-// name), extracted once from an original ISO.
-//
-//go:embed item_nam.prm
-var ItemNamPRM []byte
 
 // MapNamesCSV maps each .map file to a human-readable display name.
 // uses names from the official kf4 guide pdf mostly

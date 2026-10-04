@@ -6,11 +6,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
-
-	"kf4randomizer/internal/resources"
 )
-
-var BaseINI = resources.StartingConfigBaseINI
 
 // key=integer at line start
 func keyValueRe(key string) *regexp.Regexp {

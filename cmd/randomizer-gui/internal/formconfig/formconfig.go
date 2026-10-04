@@ -15,7 +15,6 @@ import (
 	"kf4randomizer/internal/features/mods"
 	"kf4randomizer/internal/kfconst"
 	"kf4randomizer/internal/kfmap"
-	"kf4randomizer/internal/resources"
 	"kf4randomizer/internal/runner"
 )
 
@@ -334,7 +333,7 @@ type ItemCategoryOptions struct {
 var ItemCatalog = buildItemCatalog()
 
 func buildItemCatalog() []ItemCategoryOptions {
-	names := kfmap.LoadClassIDToName(resources.ItemNamPRM)
+	names := kfmap.VanillaItemNames
 	var cats []ItemCategoryOptions
 	for _, page := range kfconst.ItemCategories {
 		var items []ItemOption
