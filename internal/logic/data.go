@@ -15,6 +15,7 @@ const (
 	ForestDew      uint16 = 120
 	GreenWand      uint16 = 140
 	Herb           uint16 = 6
+	IconOfFire     uint16 = 102
 	IconOfIce      uint16 = 101
 	IconOfWater    uint16 = 103
 	IdolOfSorrow   uint16 = 149
@@ -207,6 +208,7 @@ var gates = []struct {
 	{"6A", "42", has(BlackEye, BlackEye, BlackEye, BlackEye), false},
 	{"6", "30", has(RingOfWisdom), true},
 	{"30", "6A", Req{}, true},
+	{"27", "21", has(IconOfFire), false},
 	{"35", "37", has(IconOfWater), false},
 	{"37", "36", has(JailKey), false},
 	{"6A", "6", has(KingsKey), false},
