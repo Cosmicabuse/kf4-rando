@@ -27,7 +27,6 @@ jobs:
       - name: Vet
         run: go vet ./...
 
-      # Nothing here needs cgo, so a Linux runner can cross-compile both.
       - name: Build randomizer-cli.exe
         env:
           GOOS: windows
@@ -35,12 +34,33 @@ jobs:
           CGO_ENABLED: 0
         run: go build -o randomizer-cli.exe ./cmd/randomizer
 
-      - name: Build randomizer-gui.exe
+      - name: Build randomizer-gui.exe (windows/amd64)
         env:
           GOOS: windows
           GOARCH: amd64
           CGO_ENABLED: 0
-        run: go build -o randomizer-gui.exe ./cmd/randomizer-gui
+        run: go build -o randomizer-gui_windows-amd64.exe ./cmd/randomizer-gui
+
+      - name: Build randomizer-gui (linux/amd64)
+        env:
+          GOOS: linux
+          GOARCH: amd64
+          CGO_ENABLED: 0
+        run: go build -o randomizer-gui_linux-amd64 ./cmd/randomizer-gui
+
+      - name: Build randomizer-gui (macOS Apple Silicon/arm64)
+        env:
+          GOOS: darwin
+          GOARCH: arm64
+          CGO_ENABLED: 0
+        run: go build -o randomizer-gui_apple-arm64 ./cmd/randomizer-gui
+
+      - name: Build randomizer-gui (macOS Intel/amd64)
+        env:
+          GOOS: darwin
+          GOARCH: amd64
+          CGO_ENABLED: 0
+        run: go build -o randomizer-gui_apple-amd64 ./cmd/randomizer-gui
 
       - name: Prepare config.default.yaml
         run: cp config.example.yaml config.default.yaml
@@ -48,7 +68,11 @@ jobs:
       - name: Publish release with assets
         uses: softprops/action-gh-release@v2
         with:
+          fail_on_unmatched_files: true
           files: |
             randomizer-cli.exe
-            randomizer-gui.exe
+            randomizer-gui_windows-amd64.exe
+            randomizer-gui_linux-amd64
+            randomizer-gui_apple-arm64
+            randomizer-gui_apple-amd64
             config.default.yaml

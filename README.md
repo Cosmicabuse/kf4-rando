@@ -2,7 +2,7 @@
 
 This is an implementation of an item randomizer for KF4, usable/tested on PCSX2 2.2.0.
 
-## Usage
+## Usage / TL;DR
 
 You will need :
 
@@ -13,6 +13,12 @@ You will need :
   - **Note**: The randomizer checks for compatible checksums on run, no need to do it yourself.
 - The latest release from this repository for your system (randomizer-gui.exe for a web interface, randomizer-cli.exe for CLI with a yaml config)
 
+**NOTE**: Windows / macOS will warn about an unknown publisher, the builds aren't signed (that costs money). For that:
+
+- Windows : "More info" -> "Run anyway"
+- macOS : right-click -> Open, don't delete. Go in System Preferences, Confidentiality/Security, and locate "Open anyway" (or something to that effect)
+- Linux / macOS : you might need `chmod +x` on the file first
+
 Base usage setup if you don't want to bother too much :
 - Open randomizer-gui.exe (download from Github Releases)
 - It should open a web page. Browse your US NTSC ISO of KF4.
@@ -21,17 +27,17 @@ Base usage setup if you don't want to bother too much :
 - Cheats : if you want to start with specific items. 
   - **IF you're not familiar with hidden walls** you can give yourself Myu's Necklace there, you can see hidden walls with it.
 - Save as config.yaml : if you want to keep your settings. MIGHT BREAK ON UPDATES, if features are added.
-- Run. If all worked fine, you should have a randomized ISO and logs next to the source ISO.
+- Run. If all worked fine, you should have a randomized ISO and logs next to it
 - To quit, exit page / exit terminal window from launching the .exe
 
 ## Features
 
 ### Randomizer
 
-Randomized items are split in categories :
+Randomized items are split in optional categories :
 - ground items (visible and grabbable)
 - containers (chest, barrel, crate, pots)
-- guaranteed monster drops (optional)
+- guaranteed monster drops
 - inventory's idol of sorrow
 - shop items
 
@@ -129,10 +135,18 @@ See [TODO.md](TODO.md) for notes of planned features if you're curious.
 
 ## Compilation
 
-If for some reason, you need to compile it yourself :
+If for some reason, you need/want to compile it yourself :
 - grab Go's latest version on [golang.org](https://golang.org)
-- run `go build ./cmd/randomizer-gui/` (or `go build ./cmd/randomizer/`) for CLI version
+- run `go build ./cmd/randomizer-gui/` (or `go build ./cmd/randomizer/`) for CLI version ; this builds for YOUR platform automatically
 - launch whichever executable. CLI requires a valid .yaml file, `config.example.yaml` has comments on which parameter does what. GUI is simpler.
+
+If you need to cross-platform compile, `go tool dist list` has useable values for OS/Architecture.  
+For ex:
+
+```bash
+# go tool dist list returns linux/amd64 so :
+GOOS=linux GOARCH=amd64 go build ./cmd/randomizer-gui
+```
 
 ## Bugs
 
