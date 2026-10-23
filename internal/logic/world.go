@@ -10,7 +10,7 @@ func Default() (World, Inventory) {
 	w := World{Start: startRegion, Caps: Capabilities{}}
 
 	w.Caps[CapFire] = fireItems
-	w.Caps[CapProjectile] = projectileItems
+	w.Caps[CapProjectile] = ProjectileItems
 	w.Caps[CapBreak] = breakItems
 
 	gated := map[[2]string]bool{}

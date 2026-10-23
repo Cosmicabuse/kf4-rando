@@ -10,9 +10,6 @@ import (
 	"unsafe"
 )
 
-// Alternating description/pattern pairs, the order the dialog wants them.
-var isoFilterParts = []string{"ISO files (*.iso)", "*.iso", "All files (*.*)", "*.*"}
-
 // lpstrFilter wants the strings run together and double-NUL terminated.
 func utf16MultiString(parts ...string) *uint16 {
 	var buf []uint16
@@ -25,13 +22,13 @@ func utf16MultiString(parts ...string) *uint16 {
 }
 
 // browseForFile shows the native "open file" dialog, "" if cancelled.
-func browseForFile(title string) (string, error) {
-	return openFileDialog(title, false)
+func browseForFile(title string, f fileFilter) (string, error) {
+	return openFileDialog(title, f, false)
 }
 
 // browseForSavePath shows the native "save file" dialog, "" if cancelled.
 func browseForSavePath(title string) (string, error) {
-	return openFileDialog(title, true)
+	return openFileDialog(title, isoFilter, true)
 }
 
 // Win32's OPENFILENAMEW. comdlg32 reads it raw, so field order and types
@@ -70,7 +67,7 @@ const (
 	maxPathBuf         = 32768 // long paths, not the legacy 260
 )
 
-func openFileDialog(title string, save bool) (string, error) {
+func openFileDialog(title string, f fileFilter, save bool) (string, error) {
 	comdlg32 := syscall.NewLazyDLL("comdlg32.dll")
 	proc := comdlg32.NewProc("GetOpenFileNameW")
 	flags := uint32(ofnPathMustExist | ofnFileMustExist | ofnNoChangeDir)
@@ -79,7 +76,7 @@ func openFileDialog(title string, save bool) (string, error) {
 		flags = ofnNoChangeDir | ofnOverwritePrompt
 	}
 
-	filter := utf16MultiString(isoFilterParts...)
+	filter := utf16MultiString(f.desc, f.pattern, "All files (*.*)", "*.*")
 	titlePtr, err := syscall.UTF16PtrFromString(title)
 	if err != nil {
 		return "", fmt.Errorf("encoding title: %w", err)

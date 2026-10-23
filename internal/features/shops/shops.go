@@ -179,6 +179,14 @@ func check(stock, prices []byte) error {
 	return nil
 }
 
+// Quantity is how many of id a shop holds; unlimited counts as one.
+func Quantity(stock []byte, shop int, id uint16) int {
+	if q := stockAt(stock, shop, int(id)); q != unlimited {
+		return int(q)
+	}
+	return 1
+}
+
 func stockAt(stock []byte, shop, id int) byte {
 	return stock[shop*kfconst.ShopStockSize+id]
 }
