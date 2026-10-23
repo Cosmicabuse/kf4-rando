@@ -48,7 +48,7 @@ func main() {
 		return
 	}
 
-	if err := runner.Run(os.Stdout, cfg); err != nil {
+	if _, err := runner.Run(os.Stdout, cfg); err != nil {
 		log.Fatal(err)
 	}
 }

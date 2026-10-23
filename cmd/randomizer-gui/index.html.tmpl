@@ -107,11 +107,49 @@
     font-size: 0.85rem;
   }
   details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
+  [hidden] { display: none !important; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tabs button { background: transparent; color: var(--fg); border: 1px solid var(--border); }
+  .tabs button.active { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+  .err { color: var(--bad); font-size: 0.9rem; min-height: 1.2em; margin-top: 4px; white-space: pre-wrap; }
+
+  .tracker { --icon: 40px; --gap: 4px; background: #2a2a2d; padding: 10px; display: flex; flex-direction: column; width: max-content; }
+  .tracker .section { display: flex; flex-direction: column; gap: 6px; padding: 7px 0; }
+  .tracker .section + .section { border-top: 1px solid #3d3d42; }
+  .tracker .head { font: bold 9px/1 Verdana, Tahoma, sans-serif; color: #6e6e76; letter-spacing: .12em; text-transform: uppercase; }
+  .tracker .trow { display: flex; }
+  /* a margin rather than gap, so spacing can go negative into the icons' empty borders */
+  .tracker .trow > .tile + .tile { margin-left: var(--gap); }
+  .tracker .tile { width: var(--icon); display: flex; flex-direction: column; align-items: center; cursor: pointer; user-select: none; position: relative; }
+  .tracker .tile img { width: var(--icon); height: var(--icon); display: block; }
+  .trackset { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; margin-bottom: 12px; font-size: 0.9rem; }
+  .trackset label { display: flex; align-items: center; gap: 8px; }
+  .trackset output { min-width: 3.5em; font-variant-numeric: tabular-nums; color: var(--muted); }
+  .tracker .tag { font: bold 10px/1 Verdana, Tahoma, sans-serif; color: #f2dc5a; letter-spacing: .04em; margin-top: 2px; height: 11px; }
+  /* key icons leave blank space under the blade, so the label is pulled up into it */
+  .tracker .tile.key .tag { margin-top: -7px; }
+  .tracker .count { position: absolute; right: 0; bottom: 0; font: bold 12px/1 Verdana, Tahoma, sans-serif; color: #fff;
+                    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; }
+  .tracker .count.max { color: #5ee06a; }
+  .tracker .tile.off img { filter: brightness(.32) saturate(.6); }
+  .tracker .tile.off .tag { color: #6d6a4a; }
+
+  .modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; }
+  .modal .box { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; min-width: 260px; }
+  .modal p { margin: 0 0 16px; font-weight: 600; }
+  .modal .actions { margin: 0; justify-content: flex-end; }
 </style>
 </head>
 <body>
 
 <h1>King's Field IV Randomizer</h1>
+
+<div class="tabs">
+  <button type="button" class="active" data-tab="randomizerTab">Randomizer</button>
+  <button type="button" data-tab="trackerTab">Tracker</button>
+</div>
+
+<div id="randomizerTab">
 <p class="sub">Same options as config.yaml.</p>
 
 <form id="cfgForm">
@@ -304,6 +342,39 @@
 </form>
 
 <pre id="log">Output will appear here once you click Run.</pre>
+</div>
+
+<div id="trackerTab" hidden>
+  <fieldset>
+    <legend>Tracker file</legend>
+    <div class="field">
+      <label for="trackerPath">Tracker file (tracker_&lt;seed&gt;.json, written next to the output ISO)</label>
+      <div class="filerow">
+        <input type="text" id="trackerPath" placeholder="C:\path\to\tracker_12345.json">
+        <button type="button" class="secondary" id="browseTrackerBtn">Browse&hellip;</button>
+        <button type="button" class="primary" id="trackerLoadBtn">Load</button>
+      </div>
+    </div>
+    <div class="err" id="trackerErr"></div>
+  </fieldset>
+  <p class="sub" id="trackerInfo">No tracker loaded.</p>
+  <div class="trackset" id="trackerSettings" hidden>
+    <label>Spacing <input type="range" id="trackerGap" min="-16" max="16" step="1" value="4"><output id="trackerGapOut"></output></label>
+    <label>Icon size <input type="range" id="trackerIcon" min="24" max="96" step="2" value="40"><output id="trackerIconOut"></output></label>
+    <button type="button" class="secondary" id="trackerSetReset">Reset</button>
+  </div>
+  <div class="tracker" id="tracker" hidden></div>
+</div>
+
+<div class="modal" id="loadModal" hidden>
+  <div class="box">
+    <p>Load tracker now?</p>
+    <div class="actions">
+      <button type="button" class="primary" id="modalYes">Yes</button>
+      <button type="button" class="secondary" id="modalNo">No</button>
+    </div>
+  </div>
+</div>
 
 <script>
 function randomizerOn() {
@@ -358,6 +429,7 @@ form.addEventListener('submit', async (e) => {
       logEl.textContent += decoder.decode(value, { stream: true });
       logEl.scrollTop = logEl.scrollHeight;
     }
+    if (logEl.textContent.trimEnd().endsWith('=== Done ===')) offerTracker();
   } catch (err) {
     logEl.textContent += '\n\nJS error: ' + err;
   } finally {
@@ -525,6 +597,187 @@ document.getElementById('loadFile').addEventListener('change', async (e) => {
   } finally {
     e.target.value = '';
   }
+});
+
+function showTab(id) {
+  document.querySelectorAll('.tabs button').forEach((b) => {
+    b.classList.toggle('active', b.dataset.tab === id);
+    document.getElementById(b.dataset.tab).hidden = b.dataset.tab !== id;
+  });
+}
+document.querySelectorAll('.tabs button').forEach((b) => {
+  b.addEventListener('click', () => showTab(b.dataset.tab));
+});
+
+const trackerTiles = {{.TrackerTiles}};
+const trackerSections = {{.TrackerSections}};
+// tiles per row; sections not listed fit on one row
+const rowSizes = { 'Keys': 7, 'Wands & stones': 5 };
+
+const trk = { max: {}, state: {} };
+const trackerEl = document.getElementById('tracker');
+const trackerErr = document.getElementById('trackerErr');
+const trackerInfo = document.getElementById('trackerInfo');
+const tileEls = {};
+
+function drawTile(t) {
+  const el = tileEls[t.id];
+  const v = trk.state[t.id] || 0;
+  el.classList.toggle('off', v === 0);
+  el.querySelector('img').src = '/icons/' + (t.kind === 'sword' ? 'sword_' + Math.max(v, 1) : t.id) + '.png';
+  const count = el.querySelector('.count');
+  if (count) {
+    count.textContent = v > 0 ? v : '';
+    count.classList.toggle('max', v >= trk.max[t.id]);
+  }
+}
+
+function buildTracker() {
+  for (const name of trackerSections) {
+    const tiles = trackerTiles.filter((t) => t.section === name);
+    const sec = document.createElement('div');
+    sec.className = 'section';
+    const head = document.createElement('div');
+    head.className = 'head';
+    head.textContent = name;
+    sec.appendChild(head);
+    const per = rowSizes[name] || tiles.length;
+    for (let i = 0; i < tiles.length; i += per) {
+      const row = document.createElement('div');
+      row.className = 'trow';
+      for (const t of tiles.slice(i, i + per)) {
+        const el = document.createElement('div');
+        el.className = 'tile' + (name === 'Keys' ? ' key' : '');
+        el.title = t.name;
+        el.appendChild(document.createElement('img')).alt = t.name;
+        if (t.label) {
+          const tag = el.appendChild(document.createElement('div'));
+          tag.className = 'tag';
+          tag.textContent = t.label;
+        }
+        if (t.kind === 'counter') el.appendChild(document.createElement('div')).className = 'count';
+        // click fires for the left button only
+        el.addEventListener('click', () => stepTile(t));
+        tileEls[t.id] = el;
+        row.appendChild(el);
+      }
+      sec.appendChild(row);
+    }
+    trackerEl.appendChild(sec);
+  }
+}
+buildTracker();
+
+// Saves run one at a time so a slow write can't land after a newer one.
+let saveChain = Promise.resolve();
+function saveTracker() {
+  const body = JSON.stringify({ state: trk.state });
+  saveChain = saveChain.then(async () => {
+    try {
+      const resp = await fetch('/tracker/save', { method: 'POST', body });
+      trackerErr.textContent = resp.ok ? '' : await resp.text();
+    } catch (err) {
+      trackerErr.textContent = 'Saving tracker failed: ' + err;
+    }
+  });
+}
+
+function stepTile(t) {
+  const v = trk.state[t.id] || 0;
+  trk.state[t.id] = v >= trk.max[t.id] ? 0 : v + 1;
+  drawTile(t);
+  saveTracker();
+}
+
+async function loadTracker(path) {
+  trackerErr.textContent = '';
+  try {
+    const resp = await fetch('/tracker/load', { method: 'POST', body: JSON.stringify({ path }) });
+    if (!resp.ok) {
+      trackerErr.textContent = await resp.text();
+      return;
+    }
+    const data = await resp.json();
+    trk.max = data.max;
+    trk.state = data.state;
+    document.getElementById('trackerPath').value = data.path;
+    trackerInfo.textContent = 'Seed ' + data.seed;
+    trackerTiles.forEach(drawTile);
+    trackerEl.hidden = false;
+    document.getElementById('trackerSettings').hidden = false;
+  } catch (err) {
+    trackerErr.textContent = 'Loading tracker failed: ' + err;
+  }
+}
+
+// Layout settings live in a cookie: the GUI picks a new port every launch,
+// which empties localStorage, but cookies are shared across ports.
+const trackerLayout = { gap: 4, icon: 40 };
+function applyTrackerLayout() {
+  trackerEl.style.setProperty('--gap', trackerLayout.gap + 'px');
+  trackerEl.style.setProperty('--icon', trackerLayout.icon + 'px');
+  document.getElementById('trackerGap').value = trackerLayout.gap;
+  document.getElementById('trackerIcon').value = trackerLayout.icon;
+  document.getElementById('trackerGapOut').textContent = trackerLayout.gap + ' px';
+  document.getElementById('trackerIconOut').textContent = trackerLayout.icon + ' px';
+  document.cookie = 'trackerLayout=' + trackerLayout.gap + ',' + trackerLayout.icon + '; path=/; max-age=31536000; SameSite=Strict';
+}
+const savedLayout = /(?:^|; )trackerLayout=(-?\d+),(\d+)/.exec(document.cookie);
+if (savedLayout) {
+  trackerLayout.gap = Number(savedLayout[1]);
+  trackerLayout.icon = Number(savedLayout[2]);
+}
+applyTrackerLayout();
+document.getElementById('trackerGap').addEventListener('input', (e) => {
+  trackerLayout.gap = Number(e.target.value);
+  applyTrackerLayout();
+});
+document.getElementById('trackerIcon').addEventListener('input', (e) => {
+  trackerLayout.icon = Number(e.target.value);
+  applyTrackerLayout();
+});
+document.getElementById('trackerSetReset').addEventListener('click', () => {
+  trackerLayout.gap = 4;
+  trackerLayout.icon = 40;
+  applyTrackerLayout();
+});
+
+document.getElementById('trackerLoadBtn').addEventListener('click', () => {
+  const path = document.getElementById('trackerPath').value.trim();
+  if (path) loadTracker(path);
+});
+document.getElementById('trackerPath').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('trackerLoadBtn').click();
+});
+document.getElementById('browseTrackerBtn').addEventListener('click', async () => {
+  try {
+    const resp = await fetch('/browse-tracker');
+    if (!resp.ok) {
+      trackerErr.textContent = await resp.text();
+      return;
+    }
+    const { path } = await resp.json();
+    if (path) loadTracker(path);
+  } catch (err) {
+    trackerErr.textContent = 'Failed to open file dialog: ' + err;
+  }
+});
+
+const loadModal = document.getElementById('loadModal');
+let offeredPath = '';
+async function offerTracker() {
+  const resp = await fetch('/tracker/last');
+  if (!resp.ok) return;
+  offeredPath = (await resp.json()).path;
+  if (offeredPath) loadModal.hidden = false;
+}
+document.getElementById('modalYes').addEventListener('click', () => {
+  loadModal.hidden = true;
+  showTab('trackerTab');
+  loadTracker(offeredPath);
+});
+document.getElementById('modalNo').addEventListener('click', () => {
+  loadModal.hidden = true;
 });
 </script>
 

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"kf4randomizer/internal/features/containers"
 	"kf4randomizer/internal/features/itemmodel"
@@ -24,6 +25,7 @@ import (
 	"kf4randomizer/internal/logic"
 	"kf4randomizer/internal/report"
 	"kf4randomizer/internal/resources"
+	"kf4randomizer/internal/tracker"
 )
 
 var mapNameRE = regexp.MustCompile(`(?i)^\d{3}\.map$`)
@@ -47,6 +49,7 @@ type gameData struct {
 	dat        map[string]isopatch.DatEntry
 	itemNames  kfmap.ItemNames // nil if item_nam.prm wasn't found
 	ini        []byte          // ini/0611.ini as the input disc has it
+	start      []byte          // the ini as finally written
 	mapNames   kfmap.MapNames
 }
 
@@ -188,31 +191,31 @@ func RunDebugData(w io.Writer, inputPath, outDir string) error {
 
 // Run copies cfg.Input to cfg.Output, patches SLUS_203.18, applies mods,
 // shuffles item classIDs, and writes the randomized maps + spoiler log.
-func Run(w io.Writer, cfg *Config) error {
+func Run(w io.Writer, cfg *Config) (string, error) {
 	resolvedMods, err := mods.Resolve(mods.BuiltinCategories, cfg.Mods)
 	if err != nil {
-		return fmt.Errorf("mods selection error: %w", err)
+		return "", fmt.Errorf("mods selection error: %w", err)
 	}
 
 	if err := validateInput(cfg.Input); err != nil {
-		return fmt.Errorf("input ISO failed a pre-flight check: %w", err)
+		return "", fmt.Errorf("input ISO failed a pre-flight check: %w", err)
 	}
 
 	if cfg.StripDummyFiles {
 		_, _ = fmt.Fprintf(w, "Copying %s -> %s (stripping DUMMY*.OUT padding files) ...\n", cfg.Input, cfg.Output)
 		if err := isopatch.StripDummyFiles(cfg.Input, cfg.Output); err != nil {
-			return fmt.Errorf("stripping dummy files: %w", err)
+			return "", fmt.Errorf("stripping dummy files: %w", err)
 		}
 	} else {
 		_, _ = fmt.Fprintf(w, "Copying %s -> %s ...\n", cfg.Input, cfg.Output)
 		if err := isopatch.CopyFile(cfg.Input, cfg.Output); err != nil {
-			return fmt.Errorf("copying ISO: %w", err)
+			return "", fmt.Errorf("copying ISO: %w", err)
 		}
 	}
 
 	f, err := os.OpenFile(cfg.Output, os.O_RDWR, 0)
 	if err != nil {
-		return fmt.Errorf("opening output ISO: %w", err)
+		return "", fmt.Errorf("opening output ISO: %w", err)
 	}
 	defer func() {
 		_ = f.Close()
@@ -220,51 +223,51 @@ func Run(w io.Writer, cfg *Config) error {
 
 	slusEntry, err := isopatch.FindPath(f, []string{kfconst.IsoExecutableName})
 	if err != nil {
-		return fmt.Errorf("locating SLUS_203.18: %w", err)
+		return "", fmt.Errorf("locating SLUS_203.18: %w", err)
 	}
 
 	if cfg.DisableRandomizer {
 		_, _ = fmt.Fprintln(w, "Randomizer disabled, skipping the whitelist-bypass patch")
 	} else {
 		if err := isopatch.PatchWhitelistBypass(f, slusEntry.ByteOffset()); err != nil {
-			return fmt.Errorf("patching SLUS_203.18: %w", err)
+			return "", fmt.Errorf("patching SLUS_203.18: %w", err)
 		}
 		_, _ = fmt.Fprintln(w, "Patched SLUS_203.18 whitelist bypass")
 	}
 
 	// always, see kfconst.SlusBlackVoidFixVAddr
 	if err := isopatch.PatchBlackVoidFix(f, slusEntry.ByteOffset()); err != nil {
-		return err
+		return "", err
 	}
 
 	if cfg.WandsAnywhere {
 		if err := isopatch.WriteSlusWord(f, slusEntry.ByteOffset(), kfconst.SlusWandPadCheckVAddr, kfconst.SlusWandPadCheckSkip); err != nil {
-			return fmt.Errorf("letting wands work anywhere: %w", err)
+			return "", fmt.Errorf("letting wands work anywhere: %w", err)
 		}
 		_, _ = fmt.Fprintln(w, "Wands now work anywhere, not just on teleport pads")
 	}
 
 	if err := isopatch.PatchPickupPopup(f, slusEntry.ByteOffset(), cfg.PickupPopupShowItemIndex); err != nil {
-		return fmt.Errorf("patching pickup-name popup: %w", err)
+		return "", fmt.Errorf("patching pickup-name popup: %w", err)
 	}
 
 	if cfg.FullDebugMode {
 		if err := isopatch.PatchDebugHUD(f, slusEntry.ByteOffset()); err != nil {
-			return fmt.Errorf("patching debug HUD: %w", err)
+			return "", fmt.Errorf("patching debug HUD: %w", err)
 		}
 		_, _ = fmt.Fprintln(w, "Patched SLUS_203.18 debug HUD (L3+R3 to toggle)")
 	}
 
 	for _, p := range mods.AlwaysOnPatches {
 		if err := isopatch.WriteSlusWord(f, slusEntry.ByteOffset(), p.Address, p.Value); err != nil {
-			return fmt.Errorf("applying always-on patch: %w", err)
+			return "", fmt.Errorf("applying always-on patch: %w", err)
 		}
 	}
 
 	for _, m := range resolvedMods {
 		for _, p := range m.Patches {
 			if err := isopatch.WriteSlusWord(f, slusEntry.ByteOffset(), p.Address, p.Value); err != nil {
-				return fmt.Errorf("applying mod %q: %w", m.ID, err)
+				return "", fmt.Errorf("applying mod %q: %w", m.ID, err)
 			}
 		}
 		_, _ = fmt.Fprintf(w, "Applied mod: %s (%s)\n", m.ID, m.Label)
@@ -272,8 +275,9 @@ func Run(w io.Writer, cfg *Config) error {
 
 	data, err := loadGameData(w, f)
 	if err != nil {
-		return err
+		return "", err
 	}
+	data.start = data.ini
 
 	iniEntry, ok := data.dat[startingIniDatPath]
 	if !ok {
@@ -283,17 +287,18 @@ func Run(w io.Writer, cfg *Config) error {
 	if len(cfg.StartingConfig) > 0 {
 		newStartingIni, err := startingconfig.ApplyOverrides(data.ini, cfg.StartingConfig)
 		if err != nil {
-			return err
+			return "", err
 		}
 		if err := isopatch.WriteDatMemberResized(f, iniEntry, newStartingIni); err != nil {
-			return fmt.Errorf("applying starting_config to %s: %w", startingIniDatPath, err)
+			return "", fmt.Errorf("applying starting_config to %s: %w", startingIniDatPath, err)
 		}
+		data.start = newStartingIni
 		_, _ = fmt.Fprintf(w, "Applied %d starting_config override(s) to %s\n", len(cfg.StartingConfig), startingIniDatPath)
 	}
 
 	if !cfg.DisableRandomizer {
 		if err := applyTitleBranding(w, f, data); err != nil {
-			return err
+			return "", err
 		}
 	}
 
@@ -311,7 +316,7 @@ func Run(w io.Writer, cfg *Config) error {
 
 	if !cfg.DisableRandomizer || cfg.EnableParamdomizer || cfg.RandomizeShops {
 		if err := randomizeAll(w, cfg, f, slusEntry.ByteOffset(), data, *cfg.Seed); err != nil {
-			return err
+			return "", err
 		}
 	} else {
 		_, _ = fmt.Fprintln(w, "Nothing to randomize")
@@ -319,7 +324,7 @@ func Run(w io.Writer, cfg *Config) error {
 
 	if !cfg.DisableRandomizer {
 		if err := applySharedItemModel(w, cfg, data); err != nil {
-			return err
+			return "", err
 		}
 	}
 
@@ -335,13 +340,13 @@ func Run(w io.Writer, cfg *Config) error {
 			panic(fmt.Sprintf("no DAT entry recorded for %s", m.Name))
 		}
 		if err := isopatch.WriteDatMember(f, entry, m.Buf); err != nil {
-			return fmt.Errorf("writing %s back into DAT: %w", m.Name, err)
+			return "", fmt.Errorf("writing %s back into DAT: %w", m.Name, err)
 		}
 		written++
 	}
 
 	_, _ = fmt.Fprintf(w, "\nWrote %d map file(s) into %s\n", written, cfg.Output)
-	return nil
+	return writeTracker(w, cfg, f, slusEntry.ByteOffset(), data, *cfg.Seed)
 }
 
 // applyTitleBranding only warns if it fails, the logo isn't worth failing a
@@ -488,6 +493,22 @@ func randomizeAll(w io.Writer, cfg *Config, f *os.File, slus int64, data *gameDa
 	return nil
 }
 
+// writeTracker saves the tracker next to the output ISO, from the shop stock,
+// chr.prm and starting ini as they ended up on the disc.
+func writeTracker(w io.Writer, cfg *Config, f *os.File, slus int64, data *gameData, seed uint64) (string, error) {
+	stock, err := isopatch.ReadSlusBytes(f, slus, kfconst.SlusShopStockVAddr, kfconst.ShopCount*kfconst.ShopStockSize)
+	if err != nil {
+		return "", err
+	}
+	chr, _, _ := data.read(f, chrDatPath)
+	path := tracker.FreePath(filepath.Dir(cfg.Output), seed)
+	if err := tracker.New(seed, data.maps, stock, chr, data.start, time.Now()).Save(path); err != nil {
+		return "", fmt.Errorf("writing tracker: %w", err)
+	}
+	_, _ = fmt.Fprintf(w, "Wrote tracker to %s\n", path)
+	return path, nil
+}
+
 // scaleRewards multiplies the gold and experience monsters give, in chr.prm.
 func scaleRewards(w io.Writer, cfg *Config, f *os.File, data *gameData) error {
 	gold := cfg.GoldMultiplier > 0 && cfg.GoldMultiplier != 1
@@ -534,6 +555,7 @@ func swapStartingIdol(w io.Writer, cfg *Config, f *os.File, data *gameData, give
 	if err := isopatch.WriteDatMemberResized(f, data.dat[startingIniDatPath], ini); err != nil {
 		return fmt.Errorf("swapping the starting Idol of Sorrow: %w", err)
 	}
+	data.start = ini
 	name := fmt.Sprint(give)
 	if data.itemNames != nil {
 		name = data.itemNames.NameOrDefault(give, name)

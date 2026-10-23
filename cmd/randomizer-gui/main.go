@@ -21,6 +21,7 @@ import (
 	"kf4randomizer/cmd/randomizer-gui/internal/formconfig"
 	"kf4randomizer/internal/features/mods"
 	"kf4randomizer/internal/runner"
+	"kf4randomizer/internal/tracker"
 )
 
 func main() {
@@ -66,6 +67,13 @@ var templateFS embed.FS
 
 var pageTemplate = template.Must(template.ParseFS(templateFS, "index.html.tmpl"))
 
+type fileFilter struct{ desc, pattern string }
+
+var (
+	isoFilter  = fileFilter{"ISO files (*.iso)", "*.iso"}
+	jsonFilter = fileFilter{"Tracker files (*.json)", "*.json"}
+)
+
 // one run at a time
 var runMu sync.Mutex
 
@@ -76,14 +84,17 @@ func registerHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/load-config", handleLoadConfig)
 	mux.HandleFunc("/browse-input", handleBrowseInput)
 	mux.HandleFunc("/browse-output", handleBrowseOutput)
+	registerTrackerHandlers(mux)
 }
 
 type templateData struct {
-	Categories  []mods.Category
-	CoreStats   []formconfig.StatField
-	MagicSpells []formconfig.ElementSpells
-	EquipSlots  []formconfig.EquipSlotView
-	ItemCatalog []formconfig.ItemCategoryOptions
+	Categories      []mods.Category
+	CoreStats       []formconfig.StatField
+	MagicSpells     []formconfig.ElementSpells
+	EquipSlots      []formconfig.EquipSlotView
+	ItemCatalog     []formconfig.ItemCategoryOptions
+	TrackerTiles    template.JS
+	TrackerSections []string
 }
 
 func handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -93,11 +104,13 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	data := templateData{
-		Categories:  mods.BuiltinCategories,
-		CoreStats:   formconfig.CoreStats,
-		MagicSpells: formconfig.MagicSpells,
-		EquipSlots:  formconfig.EquipSlotViews,
-		ItemCatalog: formconfig.ItemCatalog,
+		Categories:      mods.BuiltinCategories,
+		CoreStats:       formconfig.CoreStats,
+		MagicSpells:     formconfig.MagicSpells,
+		EquipSlots:      formconfig.EquipSlotViews,
+		ItemCatalog:     formconfig.ItemCatalog,
+		TrackerTiles:    trackerTilesJSON(),
+		TrackerSections: tracker.Sections,
 	}
 	if err := pageTemplate.Execute(w, data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -145,24 +158,26 @@ func handleRun(w http.ResponseWriter, r *http.Request) {
 	fw := flushWriter{w: w, f: flusher}
 
 	var runErr error
+	var trackerPath string
 	func() {
 		defer func() {
 			if p := recover(); p != nil {
 				runErr = fmt.Errorf("internal error: %v", p)
 			}
 		}()
-		runErr = runner.Run(fw, cfg)
+		trackerPath, runErr = runner.Run(fw, cfg)
 	}()
 	if runErr != nil {
 		_, _ = fmt.Fprintf(fw, "\nERROR: %v\n", runErr)
 	} else {
+		trk.setLast(trackerPath)
 		_, _ = fmt.Fprint(fw, "\n=== Done ===\n")
 	}
 }
 
 // handleBrowseInput returns the picked source ISO as JSON, "" if cancelled.
 func handleBrowseInput(w http.ResponseWriter, _ *http.Request) {
-	path, err := browseForFile("Select the source ISO")
+	path, err := browseForFile("Select the source ISO", isoFilter)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
